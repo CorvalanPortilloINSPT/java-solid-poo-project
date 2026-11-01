@@ -145,6 +145,6 @@ La base de ejemplo también incluye 22 ingredientes, 13 productos con sus receta
 
 ## Documentación
 
-- 📄 [Informe final](docs/Informe_TP_FastFood_Grupo_B.pdf)
+- [Informe final](Informe_TP_FastFood_Grupo_B%20(1).pdf)
 - 📐 Diagramas de clases: [sistema completo](docs/uml/FastFood_UML.pdf) · [backend](docs/uml/FastFood_UML_backend.pdf) · [frontend](docs/uml/FastFood_UML_frontend.pdf) · [backend editable (.drawio)](docs/uml/FastFood_backend_UML.drawio)
 - 🧩 [Casos de uso](docs/uml/casos_de_uso.png) · [Entidad-relación](docs/uml/entidad_relacion.png) · [Arquitectura](docs/uml/arquitectura.png)
