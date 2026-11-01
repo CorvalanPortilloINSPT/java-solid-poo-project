@@ -1,0 +1,363 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam theme plain
+skinparam packageStyle rect
+left to right direction
+
+title Diagrama de Clases UML - Frontend Fast Food (Spring MVC · JSP · JSTL)
+
+' =========================================================
+' 1. CONTROLADOR (Spring MVC: atiende cada pantalla)
+' =========================================================
+package "CONTROLADOR (Spring MVC)" #E8F5E9 {
+    class AuthController <<Controller>> {
+        +raiz(sesion: HttpSession): String
+        +mostrarLogin(sesion: HttpSession): String
+        +iniciarSesion(usuario: String, password: String, request: HttpServletRequest, model: Model): String
+        +cerrarSesion(sesion: HttpSession): String
+        +mostrarCambioPassword(): String
+        +cambiarPassword(passwordActual: String, passwordNueva: String, passwordRepetida: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+    }
+    class InicioController <<Controller>> {
+        +inicio(sesion: HttpSession, model: Model): String
+    }
+    class EmpleadoController <<Controller>> {
+        +listar(sesion: HttpSession, model: Model): String
+        +nuevo(sesion: HttpSession, model: Model): String
+        +registrar(dni: String, nombre: String, apellido: String, usuario: String, password: String, rol: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+        +editar(id: String, sesion: HttpSession, model: Model): String
+        +modificar(id: String, nombre: String, apellido: String, usuario: String, password: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+        +cambiarRol(id: String, rol: String, sesion: HttpSession, redirect: RedirectAttributes): String
+        +darDeBaja(id: String, sesion: HttpSession, redirect: RedirectAttributes): String
+    }
+    class IngredienteController <<Controller>> {
+        +listar(sesion: HttpSession, model: Model): String
+        +nuevo(sesion: HttpSession, model: Model): String
+        +registrar(descripcion: String, precio: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+        +editar(id: String, sesion: HttpSession, model: Model): String
+        +modificar(id: String, descripcion: String, precio: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+        +darDeBaja(id: String, sesion: HttpSession, redirect: RedirectAttributes): String
+    }
+    class ProductoController <<Controller>> {
+        +listar(sesion: HttpSession, model: Model): String
+        +nuevo(sesion: HttpSession, model: Model): String
+        +registrar(descripcion: String, precio: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+        +editar(id: String, sesion: HttpSession, model: Model): String
+        +modificar(id: String, descripcion: String, precio: String, sesion: HttpSession, model: Model, redirect: RedirectAttributes): String
+        +darDeBaja(id: String, sesion: HttpSession, redirect: RedirectAttributes): String
+        +receta(id: String, sesion: HttpSession, model: Model): String
+        +agregarIngrediente(id: String, idIngrediente: String, obligatorio: boolean, sesion: HttpSession, redirect: RedirectAttributes): String
+        +quitarIngrediente(id: String, idIngrediente: String, sesion: HttpSession, redirect: RedirectAttributes): String
+    }
+    class PedidoController <<Controller>> {
+        +listar(sesion: HttpSession, model: Model): String
+        +detalle(id: String, sesion: HttpSession, model: Model): String
+        +eliminar(id: String, sesion: HttpSession, redirect: RedirectAttributes): String
+        +pendientes(sesion: HttpSession, model: Model): String
+        +despachar(id: String, sesion: HttpSession, redirect: RedirectAttributes): String
+        +nuevo(sesion: HttpSession, model: Model): String
+        +agregarItem(idProducto: String, cantidad: Integer, sesion: HttpSession, redirect: RedirectAttributes): String
+        +quitarItem(numero: int, sesion: HttpSession, redirect: RedirectAttributes): String
+        +agregarModificacion(numero: int, idIngrediente: String, tipo: String, cantidad: Integer, sesion: HttpSession, redirect: RedirectAttributes): String
+        +quitarModificacion(numero: int, numeroMod: int, sesion: HttpSession, redirect: RedirectAttributes): String
+        +cancelar(sesion: HttpSession, redirect: RedirectAttributes): String
+        +confirmar(sesion: HttpSession, redirect: RedirectAttributes): String
+        +reporte(desde: String, hasta: String, idVendedor: String, sesion: HttpSession, model: Model): String
+    }
+    class PruebaController <<Controller>> {
+        +prueba(model: Model): String
+    }
+}
+
+' =========================================================
+' 2. CLIENTE (comunicación con la API y sesión)
+' =========================================================
+package "CLIENTE (API y sesión)" #E3F2FD {
+    class BackendClient <<Component>> {
+        -restTemplate: RestTemplate
+        -backendUrl: String
+        +get(ruta: String, tipo: Class<T>, credenciales: Credenciales): T
+        +getLista(ruta: String, tipoArreglo: Class<T[]>, credenciales: Credenciales): List<T>
+        +post(ruta: String, body: Object, tipo: Class<T>, credenciales: Credenciales): T
+        +put(ruta: String, body: Object, tipo: Class<T>, credenciales: Credenciales): T
+        +putSinRespuesta(ruta: String, body: Object, credenciales: Credenciales): void
+        +delete(ruta: String, credenciales: Credenciales): void
+        -llamar(metodo: HttpMethod, ruta: String, body: Object, tipo: Class<T>, credenciales: Credenciales): T
+    }
+    class BackendException {
+        +{static} SIN_CONEXION: int
+        -status: int
+        +getStatus(): int
+        +isNoAutenticado(): boolean
+        +isSinConexion(): boolean
+    }
+    class Sesion <<final>> {
+        +{static} USUARIO: String
+        +{static} iniciar(sesion: HttpSession, credenciales: Credenciales, usuario: UsuarioActualDTO): void
+        +{static} estaIniciada(sesion: HttpSession): boolean
+        +{static} credenciales(sesion: HttpSession): Credenciales
+        +{static} usuario(sesion: HttpSession): UsuarioActualDTO
+        +{static} tieneRol(sesion: HttpSession, rol: String): boolean
+        +{static} cerrar(sesion: HttpSession): void
+    }
+    class Credenciales <<record>> {
+        + usuario(): String
+        + password(): String
+    }
+}
+
+' =========================================================
+' 3. CONFIGURACIÓN
+' =========================================================
+package "CONFIGURACIÓN" #ECEFF1 {
+    interface HandlerInterceptor {
+        + preHandle(request, response, handler): boolean
+    }
+    interface WebMvcConfigurer {
+        + addInterceptors(registry: InterceptorRegistry): void
+    }
+    class SesionInterceptor <<Component>> {
+        +preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Object): boolean
+    }
+    class WebConfig <<Configuration>> {
+        -sesionInterceptor: SesionInterceptor
+        +addInterceptors(registry: InterceptorRegistry): void
+    }
+    class ErroresAdvice <<ControllerAdvice>> {
+        +manejarBackend(e: BackendException, sesion: HttpSession, model: Model): String
+    }
+    class RestTemplateConfig <<Configuration>> {
+        +restTemplate(): RestTemplate
+    }
+}
+
+' =========================================================
+' 4. DTO (copia de los DTO de la API, convertidos con Jackson)
+' =========================================================
+package "DTO (datos de la API)" #FFF3E0 {
+    class CambioPasswordDTO {
+        -passwordActual: String
+        -passwordNueva: String
+    }
+    class CambioRolDTO {
+        -rol: String
+    }
+    class EmpleadoDTO {
+        -id: String
+        -dni: String
+        -nombre: String
+        -apellido: String
+        -usuario: String
+        -rol: String
+        -activo: boolean
+    }
+    class EmpleadoRequestDTO {
+        -dni: String
+        -nombre: String
+        -apellido: String
+        -usuario: String
+        -password: String
+        -rol: String
+    }
+    class IngredienteDTO {
+        -id: String
+        -descripcion: String
+        -precio: double
+        -activo: boolean
+    }
+    class IngredienteRequestDTO {
+        -descripcion: String
+        -precio: Double
+    }
+    class PedidoDTO {
+        -id: String
+        -fecha: LocalDate
+        -estado: String
+        -empleadoVendedor: String
+        -empleadoCocinero: String
+        -total: double
+        +isPendiente(): boolean
+    }
+    class PedidoDetalleDTO {
+        -id: String
+        -fecha: LocalDate
+        -estado: String
+        -idVendedor: String
+        -nombreVendedor: String
+        -idCocinero: String
+        -nombreCocinero: String
+        -items: List<ItemDetalle>
+        -total: double
+    }
+    class "PedidoDetalleDTO.ItemDetalle" as PedidoDetalleDTO_ItemDetalle {
+        -id: String
+        -idProducto: String
+        -descripcionProducto: String
+        -cantidad: int
+        -precioVenta: double
+        -modificaciones: List<ModificacionDetalle>
+        -subtotal: double
+    }
+    class "PedidoDetalleDTO.ModificacionDetalle" as PedidoDetalleDTO_ModificacionDetalle {
+        -idIngrediente: String
+        -descripcionIngrediente: String
+        -tipo: String
+        -cantidadPorUnidad: int
+        -cantidadTotal: int
+        -precioUnitario: double
+    }
+    class PedidoRequestDTO {
+        -items: List<ItemRequest>
+        +isVacio(): boolean
+        +getTotalEstimado(): double
+        +item(numero: int): ItemRequest
+        +quitarItem(numero: int): void
+    }
+    class "PedidoRequestDTO.ItemRequest" as PedidoRequestDTO_ItemRequest {
+        -idProducto: String
+        -cantidad: Integer
+        -modificaciones: List<ModificacionRequest>
+        -descripcionProducto: String
+        -precio: double
+        -receta: List<ProductoIngredienteDTO>
+        +getSubtotalEstimado(): double
+        +quitarModificacion(numero: int): void
+    }
+    class "PedidoRequestDTO.ModificacionRequest" as PedidoRequestDTO_ModificacionRequest {
+        -idIngrediente: String
+        -tipo: String
+        -cantidad: Integer
+        -descripcionIngrediente: String
+        -precioUnitario: double
+    }
+    class ProductoDTO {
+        -id: String
+        -descripcion: String
+        -precio: double
+        -disponible: boolean
+    }
+    class ProductoIngredienteDTO {
+        -idProducto: String
+        -descripcionProducto: String
+        -idIngrediente: String
+        -descripcionIngrediente: String
+        -obligatorio: boolean
+    }
+    class ProductoRequestDTO {
+        -descripcion: String
+        -precio: Double
+    }
+    class RecetaItemDTO {
+        -idIngrediente: String
+        -obligatorio: boolean
+    }
+    class ReporteVentasDTO {
+        -desde: String
+        -hasta: String
+        -idVendedor: String
+        -cantidadVentas: int
+        -totalVentas: double
+        -pedidos: List<PedidoDTO>
+    }
+    class UsuarioActualDTO {
+        -id: String
+        -usuario: String
+        -nombre: String
+        -apellido: String
+        -rol: String
+    }
+}
+
+' =========================================================
+' 5. VISTAS (páginas JSP + estilos.css)
+' =========================================================
+package "VISTAS (JSP + JSTL + CSS)" #F3E5F5 {
+    class "cambioPassword.jsp" as V_cambioPassword <<JSP>>
+    class "empleadoFormulario.jsp" as V_empleadoFormulario <<JSP>>
+    class "empleadosListado.jsp" as V_empleadosListado <<JSP>>
+    class "errorBackend.jsp" as V_errorBackend <<JSP>>
+    class "ingredienteFormulario.jsp" as V_ingredienteFormulario <<JSP>>
+    class "ingredientesListado.jsp" as V_ingredientesListado <<JSP>>
+    class "inicio.jsp" as V_inicio <<JSP>>
+    class "login.jsp" as V_login <<JSP>>
+    class "pedidoDetalle.jsp" as V_pedidoDetalle <<JSP>>
+    class "pedidoNuevo.jsp" as V_pedidoNuevo <<JSP>>
+    class "pedidosListado.jsp" as V_pedidosListado <<JSP>>
+    class "pedidosReporte.jsp" as V_pedidosReporte <<JSP>>
+    class "pendientes.jsp" as V_pendientes <<JSP>>
+    class "productoFormulario.jsp" as V_productoFormulario <<JSP>>
+    class "productoReceta.jsp" as V_productoReceta <<JSP>>
+    class "productosListado.jsp" as V_productosListado <<JSP>>
+    class "prueba.jsp" as V_prueba <<JSP>>
+}
+
+class "API REST backend-fastfood" as Api <<sistema externo>> {
+    /api/auth · /api/empleados · /api/ingredientes
+    /api/productos · /api/pedidos · /api/prueba
+}
+
+' =========================================================
+' RELACIONES
+' =========================================================
+' Controladores -> BackendClient (inyección por constructor) y Sesion (métodos estáticos)
+AuthController --> BackendClient
+AuthController ..> Sesion
+InicioController ..> Sesion
+EmpleadoController --> BackendClient
+EmpleadoController ..> Sesion
+IngredienteController --> BackendClient
+IngredienteController ..> Sesion
+ProductoController --> BackendClient
+ProductoController ..> Sesion
+PedidoController --> BackendClient
+PedidoController ..> Sesion
+PruebaController --> BackendClient
+PruebaController ..> Sesion
+
+' Controladores -> vistas que devuelven
+AuthController ..> V_cambioPassword : muestra
+AuthController ..> V_login : muestra
+InicioController ..> V_inicio : muestra
+EmpleadoController ..> V_empleadoFormulario : muestra
+EmpleadoController ..> V_empleadosListado : muestra
+IngredienteController ..> V_ingredienteFormulario : muestra
+IngredienteController ..> V_ingredientesListado : muestra
+ProductoController ..> V_productoFormulario : muestra
+ProductoController ..> V_productoReceta : muestra
+ProductoController ..> V_productosListado : muestra
+PedidoController ..> V_pedidoDetalle : muestra
+PedidoController ..> V_pedidoNuevo : muestra
+PedidoController ..> V_pedidosListado : muestra
+PedidoController ..> V_pedidosReporte : muestra
+PedidoController ..> V_pendientes : muestra
+PruebaController ..> V_prueba : muestra
+ErroresAdvice ..> V_errorBackend : muestra
+
+' Cliente
+BackendClient ..> Api : HTTP + JSON (HTTP Basic)
+BackendClient ..> BackendException : lanza
+BackendClient ..> Credenciales
+Sesion ..> Credenciales
+Sesion ..> UsuarioActualDTO
+ErroresAdvice ..> BackendException : maneja
+
+' Configuración
+HandlerInterceptor <|.. SesionInterceptor
+WebMvcConfigurer <|.. WebConfig
+WebConfig --> SesionInterceptor
+SesionInterceptor ..> Sesion
+
+' DTO usados por los controladores (principales)
+PedidoController ..> PedidoRequestDTO : pedido en armado
+PedidoController ..> PedidoDetalleDTO
+PedidoController ..> ReporteVentasDTO
+ProductoController ..> ProductoDTO
+IngredienteController ..> IngredienteDTO
+EmpleadoController ..> EmpleadoDTO
+AuthController ..> UsuarioActualDTO
+PedidoDetalleDTO +-- PedidoDetalleDTO_ItemDetalle
+PedidoDetalleDTO +-- PedidoDetalleDTO_ModificacionDetalle
+PedidoRequestDTO +-- PedidoRequestDTO_ItemRequest
+PedidoRequestDTO +-- PedidoRequestDTO_ModificacionRequest
+
+@enduml

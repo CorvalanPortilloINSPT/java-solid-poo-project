@@ -1,0 +1,21 @@
+# Compilados de Maven
+target/
+
+# Ejecutables: se publican en el Release v1.0, no en el repositorio
+*.jar
+*.war
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# Configuracion de IDEs
+.idea/
+*.iml
+.vscode/
+nbproject/
+nbactions.xml
+.settings/
+.project
+.classpath
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
