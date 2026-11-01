@@ -1,0 +1,414 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam theme plain
+skinparam packageStyle rect
+left to right direction
+skinparam nodesep 40
+skinparam ranksep 60
+
+title Diagrama de Clases UML - Backend Fast Food (API REST · Spring Boot)
+
+
+' =========================================================
+' 1. CONTROLADOR (API REST del backend)
+' =========================================================
+package "CONTROLADOR (API REST)" #E8F5E9 {
+    class "AuthController" as ApiAuthController <<RestController>> {
+        +usuarioActual(authentication: Authentication): UsuarioActualDTO
+        +cambiarPassword(dto: CambioPasswordDTO, authentication: Authentication): void
+    }
+    class "EmpleadoController" as ApiEmpleadoController <<RestController>> {
+        +listarEmpleados(auth: Authentication): List<EmpleadoDTO>
+        +buscarEmpleado(id: String, auth: Authentication): EmpleadoDTO
+        +registrarEmpleado(dto: EmpleadoRequestDTO, auth: Authentication): EmpleadoDTO
+        +modificarEmpleado(id: String, dto: EmpleadoRequestDTO, auth: Authentication): EmpleadoDTO
+        +cambiarRol(id: String, dto: CambioRolDTO, auth: Authentication): EmpleadoDTO
+        +darDeBajaEmpleado(id: String, auth: Authentication): void
+    }
+    class "IngredienteController" as ApiIngredienteController <<RestController>> {
+        +listarIngredientes(): List<IngredienteDTO>
+        +buscarIngrediente(id: String): IngredienteDTO
+        +crearIngrediente(dto: IngredienteRequestDTO): IngredienteDTO
+        +modificarIngrediente(id: String, dto: IngredienteRequestDTO): IngredienteDTO
+        +darDeBajaIngrediente(id: String): void
+    }
+    class "ProductoController" as ApiProductoController <<RestController>> {
+        +listarProductos(): List<ProductoDTO>
+        +listarDisponibles(): List<ProductoDTO>
+        +buscarProducto(id: String): ProductoDTO
+        +crearProducto(dto: ProductoRequestDTO): ProductoDTO
+        +modificarProducto(id: String, dto: ProductoRequestDTO): ProductoDTO
+        +darDeBajaProducto(id: String): void
+        +verReceta(id: String): List<ProductoIngredienteDTO>
+        +agregarIngrediente(id: String, dto: RecetaItemDTO): ProductoIngredienteDTO
+        +quitarIngrediente(id: String, idIngrediente: String): void
+    }
+    class "PedidoController" as ApiPedidoController <<RestController>> {
+        +listarPedidos(): List<PedidoDTO>
+        +listarPendientes(): List<PedidoDetalleDTO>
+        +reporteVentas(desde: LocalDate, hasta: LocalDate, idVendedor: String): ReporteVentasDTO
+        +buscarPedido(id: String): PedidoDetalleDTO
+        +registrarPedido(dto: PedidoRequestDTO, auth: Authentication): PedidoDetalleDTO
+        +despacharPedido(id: String, auth: Authentication): PedidoDetalleDTO
+        +eliminarPedido(id: String): void
+    }
+    class "PruebaController" as ApiPruebaController <<RestController>> {
+        +prueba(): String
+    }
+}
+
+' =========================================================
+' 2. SERVICIO (reglas de negocio)
+' =========================================================
+package "SERVICIO (Reglas de negocio)" #FFFDE7 {
+    class EmpleadoService <<Service>> {
+        +listar(usuarioActor: String): List<Empleado>
+        +buscar(usuarioActor: String, id: String): Empleado
+        +registrar(usuarioActor: String, datos: EmpleadoRequestDTO): Empleado
+        +modificar(usuarioActor: String, id: String, datos: EmpleadoRequestDTO): Empleado
+        +cambiarRol(usuarioActor: String, id: String, rolTexto: String): Empleado
+        +cambiarPasswordPropia(usuarioActor: String, passwordActual: String, passwordNueva: String): void
+        +darDeBaja(usuarioActor: String, id: String): void
+        +crearSysAdminInicialSiNoHayEmpleados(): void
+    }
+    class IngredienteService <<Service>> {
+        +listarActivos(): List<Ingrediente>
+        +buscar(id: String): Ingrediente
+        +registrar(descripcion: String, precio: Double): Ingrediente
+        +modificar(id: String, descripcion: String, precio: Double): Ingrediente
+        +darDeBaja(id: String): void
+    }
+    class ProductoService <<Service>> {
+        +listarActivos(): List<Producto>
+        +listarDisponibles(): List<Producto>
+        +buscar(id: String): Producto
+        +registrar(descripcion: String, precio: Double): Producto
+        +modificar(id: String, descripcion: String, precio: Double): Producto
+        +darDeBaja(id: String): void
+        +verReceta(idProducto: String): List<ProductoIngrediente>
+        +agregarIngrediente(idProducto: String, idIngrediente: String, obligatorio: boolean): ProductoIngrediente
+        +quitarIngrediente(idProducto: String, idIngrediente: String): void
+    }
+    class PedidoService <<Service>> {
+        +listarTodos(): List<Pedido>
+        +listarPendientes(): List<Pedido>
+        +buscar(id: String): Pedido
+        +registrar(usuarioVendedor: String, datos: PedidoRequestDTO): Pedido
+        +despachar(usuarioCocinero: String, idPedido: String): Pedido
+        +eliminar(idPedido: String): void
+        +pedidosParaReporte(desde: LocalDate, hasta: LocalDate, idVendedor: String): List<Pedido>
+    }
+    class GeneradorId <<utilitaria>> {
+        +{static} siguiente(idsExistentes: Collection<String>, prefijo: String, digitos: int): String
+    }
+}
+
+' =========================================================
+' 3. REPOSITORIO (acceso a datos · Spring Data JPA)
+' =========================================================
+package "REPOSITORIO (Spring Data JPA)" #F3E5F5 {
+    interface "JpaRepository<T, ID>" as JpaRepository {
+        + findAll(): List<T>
+        + findById(id: ID): Optional<T>
+        + existsById(id: ID): boolean
+        + save(entidad: T): T
+        + delete(entidad: T): void
+        + count(): long
+    }
+    interface EmpleadoRepository {
+        +findByUsuario(usuario: String): Optional<Empleado>
+        +existsByDNI(dni: String): boolean
+        +existsByUsuario(usuario: String): boolean
+        +existsByUsuarioAndIDNot(usuario: String, id: String): boolean
+        +findByRolIn(roles: Collection<? extends Rol>): List<Empleado>
+        +countByRolAndActivoTrue(rol: Rol): long
+    }
+    interface IngredienteRepository {
+        +existsByDescripcionIgnoreCase(descripcion: String): boolean
+        +existsByDescripcionIgnoreCaseAndIDNot(descripcion: String, id: String): boolean
+        +findByActivoTrue(): List<Ingrediente>
+    }
+    interface ProductoRepository {
+        +existsByDescripcionIgnoreCase(descripcion: String): boolean
+        +existsByDescripcionIgnoreCaseAndIDNot(descripcion: String, id: String): boolean
+        +findByActivoTrue(): List<Producto>
+        +findByActivoTrueAndDisponibleTrue(): List<Producto>
+    }
+    interface ProductoIngredienteRepository {
+        +findByProducto_ID(idProducto: String): List<ProductoIngrediente>
+        +existsByProducto_IDAndObligatorioTrue(idProducto: String): boolean
+        +existsByIngrediente_IDAndProducto_ActivoTrue(idIngrediente: String): boolean
+    }
+    interface PedidoRepository {
+        +findByEstadoOrderByFechaAscIDAsc(estado: EstadoPedido): List<Pedido>
+        +findAllByOrderByFechaAscIDAsc(): List<Pedido>
+        +findAllIds(): List<String>
+        +buscarParaReporte(estado: EstadoPedido, desde: LocalDate, hasta: LocalDate, idVendedor: String): List<Pedido>
+    }
+    interface ItemRepository {
+        +existsByProducto_IDAndPedido_Estado(productoId: String, estado: EstadoPedido): boolean
+        +findAllIds(): List<String>
+    }
+    interface ItemIngredienteRepository {
+        +existsByIngrediente_IDAndItem_Pedido_Estado(idIngrediente: String, estado: EstadoPedido): boolean
+        +findAllIds(): List<String>
+    }
+}
+
+' =========================================================
+' 4. MODELO (entidades JPA, enums y DTOs)
+' =========================================================
+package "MODELO (Model)" #FFF3E0 {
+    package "Entidades del sistema" {
+        abstract class Persona <<Entity>> {
+            -ID: String
+            -DNI: String
+            -nombre: String
+            -apellido: String
+            -usuario: String
+            -contraseña: String
+            -rol: Rol
+        }
+        class Empleado <<Entity>> {
+            -activo: boolean
+        }
+        class Ingrediente <<Entity>> {
+            -ID: String
+            -descripcion: String
+            -precio: double
+            -activo: boolean
+        }
+        class Producto <<Entity>> {
+            -ID: String
+            -descripcion: String
+            -precio: double
+            -disponible: boolean
+            -activo: boolean
+        }
+        class ProductoIngrediente <<Entity>> {
+            -producto: Producto
+            -ingrediente: Ingrediente
+            -obligatorio: boolean
+        }
+        class ProductoIngredienteId <<IdClass>> {
+            -producto: String
+            -ingrediente: String
+            +equals(o: Object): boolean
+            +hashCode(): int
+        }
+        class Pedido <<Entity>> {
+            -ID: String
+            -fecha: LocalDate
+            -estado: EstadoPedido
+            -empleadoVendedor: Empleado
+            -empleadoCocinero: Empleado
+            -items: List<Item>
+            +agregarItem(item: Item): void
+            +despachar(cocinero: Empleado): void
+            +calcularTotal(): double
+        }
+        class Item <<Entity>> {
+            -ID: String
+            -pedido: Pedido
+            -producto: Producto
+            -descripcionProducto: String
+            -cantidad: int
+            -precioVenta: double
+            -modificaciones: List<ItemIngrediente>
+            +agregarModificacion(modificacion: ItemIngrediente): void
+            +calcularCostoAgregadosPorUnidad(): double
+            +calcularSubtotal(): double
+        }
+        class ItemIngrediente <<Entity>> {
+            -ID: String
+            -item: Item
+            -ingrediente: Ingrediente
+            -tipoModificacion: TipoModificacion
+            -cantidad: int
+            -precioUnitario: double
+            +calcularCostoPorUnidad(): double
+        }
+        interface Serializable
+    }
+    package "Enumeraciones" {
+        enum Rol {
+            VENDEDOR
+            COCINERO
+            GERENTE
+            SYS_ADMIN
+        }
+        enum EstadoPedido {
+            PENDIENTE
+            DESPACHADO
+        }
+        enum TipoModificacion {
+            AGREGADO
+            QUITADO
+        }
+    }
+    package "Objetos de Transferencia (DTOs)" {
+        class CambioPasswordDTO
+        class CambioRolDTO
+        class EmpleadoDTO
+        class EmpleadoRequestDTO
+        class IngredienteDTO
+        class IngredienteRequestDTO
+        class PedidoDTO
+        class PedidoDetalleDTO
+        class PedidoRequestDTO
+        class ProductoDTO
+        class ProductoIngredienteDTO
+        class ProductoRequestDTO
+        class RecetaItemDTO
+        class ReporteVentasDTO
+        class UsuarioActualDTO
+    }
+}
+
+' =========================================================
+' 5. EXCEPCIONES
+' =========================================================
+package "EXCEPCIONES" #FFEBEE {
+    class RuntimeException
+    abstract class NegocioException {
+    }
+    class RecursoNoEncontradoException
+    class DatoInvalidoException
+    class ReglaNegocioException
+    class OperacionNoPermitidaException
+    class GlobalExceptionHandler <<RestControllerAdvice>> {
+        +manejarNoEncontrado(ex: RecursoNoEncontradoException): ProblemDetail
+        +manejarDatoInvalido(ex: DatoInvalidoException): ProblemDetail
+        +manejarReglaNegocio(ex: ReglaNegocioException): ProblemDetail
+        +manejarOperacionNoPermitida(ex: OperacionNoPermitidaException): ProblemDetail
+        +manejarJsonInvalido(ex: HttpMessageNotReadableException): ProblemDetail
+    }
+}
+
+' =========================================================
+' 6. SEGURIDAD Y CONFIGURACIÓN
+' =========================================================
+package "SEGURIDAD Y CONFIGURACIÓN" #ECEFF1 {
+    interface UserDetailsService {
+        + loadUserByUsername(usuario: String): UserDetails
+    }
+    interface PasswordEncoder {
+        + encode(raw: CharSequence): String
+        + matches(raw: CharSequence, codificada: String): boolean
+    }
+    interface ApplicationRunner {
+        + run(args: ApplicationArguments): void
+    }
+    class EmpleadoUserDetailsService <<Service>> {
+        +loadUserByUsername(usuario: String): UserDetails
+    }
+    class TextoPlanoLegacyEncoder {
+        +encode(rawPassword: CharSequence): String
+        +matches(rawPassword: CharSequence, storedPassword: String): boolean
+    }
+    class SecurityConfig <<Configuration>> {
+        -{static} GERENTE: String
+        -{static} VENDEDOR: String
+        -{static} COCINERO: String
+        -{static} SYS_ADMIN: String
+        +securityFilterChain(http: HttpSecurity): SecurityFilterChain
+    }
+    class InicializadorDatos <<Component>> {
+        +run(args: ApplicationArguments): void
+    }
+}
+
+' =========================================================
+' RELACIONES
+' =========================================================
+
+
+
+' Controladores -> Servicios / Repositorios (inyección por constructor)
+ApiAuthController --> EmpleadoRepository
+ApiAuthController --> EmpleadoService
+ApiEmpleadoController --> EmpleadoService
+ApiIngredienteController --> IngredienteService
+ApiProductoController --> ProductoService
+ApiPedidoController --> PedidoService
+
+' Servicios -> Repositorios y otros servicios (inyección por constructor)
+EmpleadoService --> EmpleadoRepository
+EmpleadoService --> PasswordEncoder
+IngredienteService --> IngredienteRepository
+IngredienteService --> ProductoIngredienteRepository
+IngredienteService --> ItemIngredienteRepository
+ProductoService --> ProductoRepository
+ProductoService --> ProductoIngredienteRepository
+ProductoService --> ItemRepository
+ProductoService --> IngredienteService
+PedidoService --> PedidoRepository
+PedidoService --> ItemRepository
+PedidoService --> ItemIngredienteRepository
+PedidoService --> ProductoIngredienteRepository
+PedidoService --> EmpleadoRepository
+PedidoService --> ProductoService
+PedidoService --> IngredienteService
+EmpleadoUserDetailsService --> EmpleadoRepository
+InicializadorDatos --> EmpleadoService
+EmpleadoService ..> GeneradorId
+IngredienteService ..> GeneradorId
+ProductoService ..> GeneradorId
+PedidoService ..> GeneradorId
+
+' Repositorios: interfaces que extienden JpaRepository
+JpaRepository <|-- EmpleadoRepository
+JpaRepository <|-- IngredienteRepository
+JpaRepository <|-- ProductoRepository
+JpaRepository <|-- ProductoIngredienteRepository
+JpaRepository <|-- PedidoRepository
+JpaRepository <|-- ItemRepository
+JpaRepository <|-- ItemIngredienteRepository
+EmpleadoRepository ..> Empleado
+IngredienteRepository ..> Ingrediente
+ProductoRepository ..> Producto
+ProductoIngredienteRepository ..> ProductoIngrediente
+PedidoRepository ..> Pedido
+ItemRepository ..> Item
+ItemIngredienteRepository ..> ItemIngrediente
+
+' Dominio
+Persona <|-- Empleado
+Persona --> "1" Rol : rol
+Pedido "0..*" --> "1" Empleado : vendedor
+Pedido "0..*" --> "0..1" Empleado : cocinero
+Pedido --> "1" EstadoPedido : estado
+Pedido "1" *-- "1..*" Item : items (composición)
+Item "0..*" --> "1" Producto : producto
+Item "1" *-- "0..*" ItemIngrediente : modificaciones (composición)
+ItemIngrediente "0..*" --> "1" Ingrediente : ingrediente
+ItemIngrediente --> "1" TipoModificacion : tipoModificacion
+ProductoIngrediente "0..*" --> "1" Producto : receta de
+ProductoIngrediente "0..*" --> "1" Ingrediente : lleva
+ProductoIngrediente ..> ProductoIngredienteId : <<IdClass>>
+Serializable <|.. ProductoIngredienteId
+
+' Excepciones
+RuntimeException <|-- NegocioException
+NegocioException <|-- RecursoNoEncontradoException
+NegocioException <|-- DatoInvalidoException
+NegocioException <|-- ReglaNegocioException
+NegocioException <|-- OperacionNoPermitidaException
+GlobalExceptionHandler ..> NegocioException : maneja (404 / 400 / 409 / 403)
+PedidoService ..> NegocioException : lanza
+
+' Seguridad
+UserDetailsService <|.. EmpleadoUserDetailsService
+PasswordEncoder <|.. TextoPlanoLegacyEncoder
+SecurityConfig ..> TextoPlanoLegacyEncoder : crea
+ApplicationRunner <|.. InicializadorDatos
+
+' Disposición vertical de las capas (enlaces ocultos, no son relaciones)
+ApiPedidoController -[hidden]-> PedidoService
+PedidoService -[hidden]-> PedidoRepository
+PedidoRepository -[hidden]-> Pedido
+EmpleadoRepository -[hidden]-> ItemRepository
+IngredienteRepository -[hidden]-> ItemIngredienteRepository
+ProductoRepository -[hidden]-> ProductoIngredienteRepository
+NegocioException -[hidden]-> SecurityConfig
+@enduml
