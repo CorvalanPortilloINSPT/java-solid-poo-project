@@ -1,5 +1,0 @@
-<%@ page pageEncoding="UTF-8" %>
-<%-- Parte común del <head>: se incluye en todas las páginas. --%>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="${pageContext.request.contextPath}/css/estilos.css">
