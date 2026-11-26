@@ -44,6 +44,9 @@ package "VISTA (Frontend web · JSP)" #E3F2FD {
     class SesionInterceptor <<Component>> {
         + preHandle(request, response, handler): boolean
     }
+    class SinCacheInterceptor <<Component>> {
+        + preHandle(request, response, handler): boolean
+    }
     class ErroresAdvice <<ControllerAdvice>> {
         + manejarBackend(e: BackendException, sesion: HttpSession, model: Model): String
     }
@@ -59,46 +62,43 @@ package "VISTA (Frontend web · JSP)" #E3F2FD {
 ' =========================================================
 package "CONTROLADOR (API REST)" #E8F5E9 {
     class "AuthController" as ApiAuthController <<RestController>> {
-        +usuarioActual(authentication: Authentication): UsuarioActualDTO
-        +cambiarPassword(dto: CambioPasswordDTO, authentication: Authentication): void
+        +usuarioActual(authentication: Authentication): Empleado
+        +cambiarPassword(datos: Map<String, String>, authentication: Authentication): void
     }
     class "EmpleadoController" as ApiEmpleadoController <<RestController>> {
-        +listarEmpleados(auth: Authentication): List<EmpleadoDTO>
-        +buscarEmpleado(id: String, auth: Authentication): EmpleadoDTO
-        +registrarEmpleado(dto: EmpleadoRequestDTO, auth: Authentication): EmpleadoDTO
-        +modificarEmpleado(id: String, dto: EmpleadoRequestDTO, auth: Authentication): EmpleadoDTO
-        +cambiarRol(id: String, dto: CambioRolDTO, auth: Authentication): EmpleadoDTO
+        +listarEmpleados(auth: Authentication): List<Empleado>
+        +buscarEmpleado(id: String, auth: Authentication): Empleado
+        +registrarEmpleado(datos: Empleado, auth: Authentication): Empleado
+        +modificarEmpleado(id: String, datos: Empleado, auth: Authentication): Empleado
+        +cambiarRol(id: String, datos: Empleado, auth: Authentication): Empleado
         +darDeBajaEmpleado(id: String, auth: Authentication): void
     }
     class "IngredienteController" as ApiIngredienteController <<RestController>> {
-        +listarIngredientes(): List<IngredienteDTO>
-        +buscarIngrediente(id: String): IngredienteDTO
-        +crearIngrediente(dto: IngredienteRequestDTO): IngredienteDTO
-        +modificarIngrediente(id: String, dto: IngredienteRequestDTO): IngredienteDTO
+        +listarIngredientes(): List<Ingrediente>
+        +buscarIngrediente(id: String): Ingrediente
+        +crearIngrediente(datos: Ingrediente): Ingrediente
+        +modificarIngrediente(id: String, datos: Ingrediente): Ingrediente
         +darDeBajaIngrediente(id: String): void
     }
     class "ProductoController" as ApiProductoController <<RestController>> {
-        +listarProductos(): List<ProductoDTO>
-        +listarDisponibles(): List<ProductoDTO>
-        +buscarProducto(id: String): ProductoDTO
-        +crearProducto(dto: ProductoRequestDTO): ProductoDTO
-        +modificarProducto(id: String, dto: ProductoRequestDTO): ProductoDTO
+        +listarProductos(): List<Producto>
+        +listarDisponibles(): List<Producto>
+        +buscarProducto(id: String): Producto
+        +crearProducto(datos: Producto): Producto
+        +modificarProducto(id: String, datos: Producto): Producto
         +darDeBajaProducto(id: String): void
-        +verReceta(id: String): List<ProductoIngredienteDTO>
-        +agregarIngrediente(id: String, dto: RecetaItemDTO): ProductoIngredienteDTO
+        +verReceta(id: String): List<ProductoIngrediente>
+        +agregarIngrediente(id: String, datos: ProductoIngrediente): ProductoIngrediente
         +quitarIngrediente(id: String, idIngrediente: String): void
     }
     class "PedidoController" as ApiPedidoController <<RestController>> {
-        +listarPedidos(): List<PedidoDTO>
-        +listarPendientes(): List<PedidoDetalleDTO>
-        +reporteVentas(desde: LocalDate, hasta: LocalDate, idVendedor: String): ReporteVentasDTO
-        +buscarPedido(id: String): PedidoDetalleDTO
-        +registrarPedido(dto: PedidoRequestDTO, auth: Authentication): PedidoDetalleDTO
-        +despacharPedido(id: String, auth: Authentication): PedidoDetalleDTO
+        +listarPedidos(): List<Pedido>
+        +listarPendientes(): List<Pedido>
+        +reporteVentas(desde: LocalDate, hasta: LocalDate, idVendedor: String): ReporteVentas
+        +buscarPedido(id: String): Pedido
+        +registrarPedido(datos: Pedido, auth: Authentication): Pedido
+        +despacharPedido(id: String, auth: Authentication): Pedido
         +eliminarPedido(id: String): void
-    }
-    class "PruebaController" as ApiPruebaController <<RestController>> {
-        +prueba(): String
     }
 }
 
@@ -109,12 +109,12 @@ package "SERVICIO (Reglas de negocio)" #FFFDE7 {
     class EmpleadoService <<Service>> {
         +listar(usuarioActor: String): List<Empleado>
         +buscar(usuarioActor: String, id: String): Empleado
-        +registrar(usuarioActor: String, datos: EmpleadoRequestDTO): Empleado
-        +modificar(usuarioActor: String, id: String, datos: EmpleadoRequestDTO): Empleado
-        +cambiarRol(usuarioActor: String, id: String, rolTexto: String): Empleado
+        +registrar(usuarioActor: String, datos: Empleado): Empleado
+        +modificar(usuarioActor: String, id: String, datos: Empleado): Empleado
+        +cambiarRol(usuarioActor: String, id: String, rolPedido: Rol): Empleado
         +cambiarPasswordPropia(usuarioActor: String, passwordActual: String, passwordNueva: String): void
         +darDeBaja(usuarioActor: String, id: String): void
-        +crearSysAdminInicialSiNoHayEmpleados(): void
+        +crearUsuariosInicialesSiFaltan(): void
     }
     class IngredienteService <<Service>> {
         +listarActivos(): List<Ingrediente>
@@ -138,10 +138,10 @@ package "SERVICIO (Reglas de negocio)" #FFFDE7 {
         +listarTodos(): List<Pedido>
         +listarPendientes(): List<Pedido>
         +buscar(id: String): Pedido
-        +registrar(usuarioVendedor: String, datos: PedidoRequestDTO): Pedido
+        +registrar(usuarioVendedor: String, datos: Pedido): Pedido
         +despachar(usuarioCocinero: String, idPedido: String): Pedido
         +eliminar(idPedido: String): void
-        +pedidosParaReporte(desde: LocalDate, hasta: LocalDate, idVendedor: String): List<Pedido>
+        +generarReporte(desde: LocalDate, hasta: LocalDate, idVendedor: String): ReporteVentas
     }
     class GeneradorId <<utilitaria>> {
         +{static} siguiente(idsExistentes: Collection<String>, prefijo: String, digitos: int): String
@@ -154,37 +154,43 @@ package "SERVICIO (Reglas de negocio)" #FFFDE7 {
 package "REPOSITORIO (Spring Data JPA)" #F3E5F5 {
     interface "JpaRepository<T, ID>" as JpaRepository {
         + findAll(): List<T>
-        + findById(id: ID): Optional<T>
         + existsById(id: ID): boolean
         + save(entidad: T): T
         + delete(entidad: T): void
-        + count(): long
     }
     interface EmpleadoRepository {
-        +findByUsuario(usuario: String): Optional<Empleado>
+        +findByID(id: String): Empleado
+        +findByUsuario(usuario: String): Empleado
         +existsByDNI(dni: String): boolean
         +existsByUsuario(usuario: String): boolean
         +existsByUsuarioAndIDNot(usuario: String, id: String): boolean
         +findByRolIn(roles: Collection<? extends Rol>): List<Empleado>
         +countByRolAndActivoTrue(rol: Rol): long
+        +findAllIds(): List<String>
     }
     interface IngredienteRepository {
+        +findByID(id: String): Ingrediente
         +existsByDescripcionIgnoreCase(descripcion: String): boolean
         +existsByDescripcionIgnoreCaseAndIDNot(descripcion: String, id: String): boolean
         +findByActivoTrue(): List<Ingrediente>
+        +findAllIds(): List<String>
     }
     interface ProductoRepository {
+        +findByID(id: String): Producto
         +existsByDescripcionIgnoreCase(descripcion: String): boolean
         +existsByDescripcionIgnoreCaseAndIDNot(descripcion: String, id: String): boolean
         +findByActivoTrue(): List<Producto>
         +findByActivoTrueAndDisponibleTrue(): List<Producto>
+        +findAllIds(): List<String>
     }
     interface ProductoIngredienteRepository {
+        +findByProducto_IDAndIngrediente_ID(idProducto: String, idIngrediente: String): ProductoIngrediente
         +findByProducto_ID(idProducto: String): List<ProductoIngrediente>
         +existsByProducto_IDAndObligatorioTrue(idProducto: String): boolean
         +existsByIngrediente_IDAndProducto_ActivoTrue(idIngrediente: String): boolean
     }
     interface PedidoRepository {
+        +findByID(id: String): Pedido
         +findByEstadoOrderByFechaAscIDAsc(estado: EstadoPedido): List<Pedido>
         +findAllByOrderByFechaAscIDAsc(): List<Pedido>
         +findAllIds(): List<String>
@@ -201,17 +207,17 @@ package "REPOSITORIO (Spring Data JPA)" #F3E5F5 {
 }
 
 ' =========================================================
-' 5. MODELO (entidades JPA, enums y DTOs)
+' 5. MODELO (entidades JPA, resultado del reporte y enums)
 ' =========================================================
 package "MODELO (Model)" #FFF3E0 {
-    package "Entidades del sistema" {
+    package "Entidades del sistema (sin DTO: se devuelven en JSON)" {
         abstract class Persona <<Entity>> {
             -ID: String
             -DNI: String
             -nombre: String
             -apellido: String
             -usuario: String
-            -contraseña: String
+            -contraseña: String  {JSON: "password", solo escritura}
             -rol: Rol
         }
         class Empleado <<Entity>> {
@@ -234,6 +240,10 @@ package "MODELO (Model)" #FFF3E0 {
             -producto: Producto
             -ingrediente: Ingrediente
             -obligatorio: boolean
+            -idIngrediente: String  {@Transient}
+            +getIdProducto(): String
+            +getDescripcionProducto(): String
+            +getDescripcionIngrediente(): String
         }
         class ProductoIngredienteId <<IdClass>> {
             -producto: String
@@ -248,9 +258,14 @@ package "MODELO (Model)" #FFF3E0 {
             -empleadoVendedor: Empleado
             -empleadoCocinero: Empleado
             -items: List<Item>
+            +getItems(): List<Item>  {copia defensiva}
             +agregarItem(item: Item): void
             +despachar(cocinero: Empleado): void
-            +calcularTotal(): double
+            +calcularTotal(): double  {JSON: "total"}
+            +getIdVendedor(): String
+            +getNombreVendedor(): String
+            +getIdCocinero(): String
+            +getNombreCocinero(): String
         }
         class Item <<Entity>> {
             -ID: String
@@ -260,9 +275,11 @@ package "MODELO (Model)" #FFF3E0 {
             -cantidad: int
             -precioVenta: double
             -modificaciones: List<ItemIngrediente>
+            -idProducto: String  {@Transient}
+            +getModificaciones(): List<ItemIngrediente>  {copia defensiva}
             +agregarModificacion(modificacion: ItemIngrediente): void
             +calcularCostoAgregadosPorUnidad(): double
-            +calcularSubtotal(): double
+            +calcularSubtotal(): double  {JSON: "subtotal"}
         }
         class ItemIngrediente <<Entity>> {
             -ID: String
@@ -271,9 +288,22 @@ package "MODELO (Model)" #FFF3E0 {
             -tipoModificacion: TipoModificacion
             -cantidad: int
             -precioUnitario: double
+            -idIngrediente: String  {@Transient}
+            +calcularCantidadTotal(): int  {JSON: "cantidadTotal"}
             +calcularCostoPorUnidad(): double
         }
         interface Serializable
+    }
+    package "Resultados calculados (no se guardan)" {
+        class ReporteVentas <<inmutable>> {
+            -desde: LocalDate
+            -hasta: LocalDate
+            -idVendedor: String
+            -pedidos: List<Pedido>
+            -cantidadVentas: int
+            -totalVentas: double
+            +getPedidos(): List<Pedido>  {copia defensiva}
+        }
     }
     package "Enumeraciones" {
         enum Rol {
@@ -290,23 +320,6 @@ package "MODELO (Model)" #FFF3E0 {
             AGREGADO
             QUITADO
         }
-    }
-    package "Objetos de Transferencia (DTOs)" {
-        class CambioPasswordDTO
-        class CambioRolDTO
-        class EmpleadoDTO
-        class EmpleadoRequestDTO
-        class IngredienteDTO
-        class IngredienteRequestDTO
-        class PedidoDTO
-        class PedidoDetalleDTO
-        class PedidoRequestDTO
-        class ProductoDTO
-        class ProductoIngredienteDTO
-        class ProductoRequestDTO
-        class RecetaItemDTO
-        class ReporteVentasDTO
-        class UsuarioActualDTO
     }
 }
 
@@ -347,16 +360,14 @@ package "SEGURIDAD Y CONFIGURACIÓN" #ECEFF1 {
     class EmpleadoUserDetailsService <<Service>> {
         +loadUserByUsername(usuario: String): UserDetails
     }
-    class TextoPlanoLegacyEncoder {
-        +encode(rawPassword: CharSequence): String
-        +matches(rawPassword: CharSequence, storedPassword: String): boolean
-    }
+    class BCryptPasswordEncoder
     class SecurityConfig <<Configuration>> {
         -{static} GERENTE: String
         -{static} VENDEDOR: String
         -{static} COCINERO: String
         -{static} SYS_ADMIN: String
         +securityFilterChain(http: HttpSecurity): SecurityFilterChain
+        +passwordEncoder(): PasswordEncoder
     }
     class InicializadorDatos <<Component>> {
         +run(args: ApplicationArguments): void
@@ -444,6 +455,9 @@ ProductoIngrediente "0..*" --> "1" Producto : receta de
 ProductoIngrediente "0..*" --> "1" Ingrediente : lleva
 ProductoIngrediente ..> ProductoIngredienteId : <<IdClass>>
 Serializable <|.. ProductoIngredienteId
+ReporteVentas "1" o-- "0..*" Pedido : pedidos despachados
+PedidoService ..> ReporteVentas : crea
+ApiPedidoController ..> ReporteVentas
 
 ' Excepciones
 RuntimeException <|-- NegocioException
@@ -456,8 +470,8 @@ PedidoService ..> NegocioException : lanza
 
 ' Seguridad
 UserDetailsService <|.. EmpleadoUserDetailsService
-PasswordEncoder <|.. TextoPlanoLegacyEncoder
-SecurityConfig ..> TextoPlanoLegacyEncoder : crea
+PasswordEncoder <|.. BCryptPasswordEncoder
+SecurityConfig ..> BCryptPasswordEncoder : crea
 ApplicationRunner <|.. InicializadorDatos
 
 ' Disposición vertical de las capas (enlaces ocultos, no son relaciones)
