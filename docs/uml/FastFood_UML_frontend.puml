@@ -64,9 +64,6 @@ package "CONTROLADOR (Spring MVC)" #E8F5E9 {
         +confirmar(sesion: HttpSession, redirect: RedirectAttributes): String
         +reporte(desde: String, hasta: String, idVendedor: String, sesion: HttpSession, model: Model): String
     }
-    class PruebaController <<Controller>> {
-        +prueba(model: Model): String
-    }
 }
 
 ' =========================================================
@@ -83,6 +80,7 @@ package "CLIENTE (API y sesión)" #E3F2FD {
         +putSinRespuesta(ruta: String, body: Object, credenciales: Credenciales): void
         +delete(ruta: String, credenciales: Credenciales): void
         -llamar(metodo: HttpMethod, ruta: String, body: Object, tipo: Class<T>, credenciales: Credenciales): T
+        -mensajeDeError(e: HttpStatusCodeException, status: int): String
     }
     class BackendException {
         +{static} SIN_CONEXION: int
@@ -119,7 +117,11 @@ package "CONFIGURACIÓN" #ECEFF1 {
     class SesionInterceptor <<Component>> {
         +preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Object): boolean
     }
+    class SinCacheInterceptor <<Component>> {
+        +preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Object): boolean
+    }
     class WebConfig <<Configuration>> {
+        -sinCacheInterceptor: SinCacheInterceptor
         -sesionInterceptor: SesionInterceptor
         +addInterceptors(registry: InterceptorRegistry): void
     }
@@ -132,7 +134,7 @@ package "CONFIGURACIÓN" #ECEFF1 {
 }
 
 ' =========================================================
-' 4. DTO (copia de los DTO de la API, convertidos con Jackson)
+' 4. DTO (clases del front para el JSON de la API, convertidas con Jackson)
 ' =========================================================
 package "DTO (datos de la API)" #FFF3E0 {
     class CambioPasswordDTO {
@@ -169,12 +171,19 @@ package "DTO (datos de la API)" #FFF3E0 {
         -descripcion: String
         -precio: Double
     }
+    class ErrorBackendDTO {
+        -title: String
+        -status: int
+        -detail: String
+    }
     class PedidoDTO {
         -id: String
         -fecha: LocalDate
         -estado: String
-        -empleadoVendedor: String
-        -empleadoCocinero: String
+        -idVendedor: String
+        -nombreVendedor: String
+        -idCocinero: String
+        -nombreCocinero: String
         -total: double
         +isPendiente(): boolean
     }
@@ -186,19 +195,19 @@ package "DTO (datos de la API)" #FFF3E0 {
         -nombreVendedor: String
         -idCocinero: String
         -nombreCocinero: String
-        -items: List<ItemDetalle>
+        -items: List<ItemDetalleDTO>
         -total: double
     }
-    class "PedidoDetalleDTO.ItemDetalle" as PedidoDetalleDTO_ItemDetalle {
+    class ItemDetalleDTO {
         -id: String
         -idProducto: String
         -descripcionProducto: String
         -cantidad: int
         -precioVenta: double
-        -modificaciones: List<ModificacionDetalle>
+        -modificaciones: List<ModificacionDetalleDTO>
         -subtotal: double
     }
-    class "PedidoDetalleDTO.ModificacionDetalle" as PedidoDetalleDTO_ModificacionDetalle {
+    class ModificacionDetalleDTO {
         -idIngrediente: String
         -descripcionIngrediente: String
         -tipo: String
@@ -207,23 +216,23 @@ package "DTO (datos de la API)" #FFF3E0 {
         -precioUnitario: double
     }
     class PedidoRequestDTO {
-        -items: List<ItemRequest>
+        -items: List<ItemRequestDTO>
         +isVacio(): boolean
         +getTotalEstimado(): double
-        +item(numero: int): ItemRequest
+        +item(numero: int): ItemRequestDTO
         +quitarItem(numero: int): void
     }
-    class "PedidoRequestDTO.ItemRequest" as PedidoRequestDTO_ItemRequest {
+    class ItemRequestDTO {
         -idProducto: String
         -cantidad: Integer
-        -modificaciones: List<ModificacionRequest>
+        -modificaciones: List<ModificacionRequestDTO>
         -descripcionProducto: String
         -precio: double
         -receta: List<ProductoIngredienteDTO>
         +getSubtotalEstimado(): double
         +quitarModificacion(numero: int): void
     }
-    class "PedidoRequestDTO.ModificacionRequest" as PedidoRequestDTO_ModificacionRequest {
+    class ModificacionRequestDTO {
         -idIngrediente: String
         -tipo: String
         -cantidad: Integer
@@ -288,12 +297,11 @@ package "VISTAS (JSP + JSTL + CSS)" #F3E5F5 {
     class "productoFormulario.jsp" as V_productoFormulario <<JSP>>
     class "productoReceta.jsp" as V_productoReceta <<JSP>>
     class "productosListado.jsp" as V_productosListado <<JSP>>
-    class "prueba.jsp" as V_prueba <<JSP>>
 }
 
 class "API REST backend-fastfood" as Api <<sistema externo>> {
     /api/auth · /api/empleados · /api/ingredientes
-    /api/productos · /api/pedidos · /api/prueba
+    /api/productos · /api/pedidos
 }
 
 ' =========================================================
@@ -311,8 +319,6 @@ ProductoController --> BackendClient
 ProductoController ..> Sesion
 PedidoController --> BackendClient
 PedidoController ..> Sesion
-PruebaController --> BackendClient
-PruebaController ..> Sesion
 
 ' Controladores -> vistas que devuelven
 AuthController ..> V_cambioPassword : muestra
@@ -330,13 +336,13 @@ PedidoController ..> V_pedidoNuevo : muestra
 PedidoController ..> V_pedidosListado : muestra
 PedidoController ..> V_pedidosReporte : muestra
 PedidoController ..> V_pendientes : muestra
-PruebaController ..> V_prueba : muestra
 ErroresAdvice ..> V_errorBackend : muestra
 
 ' Cliente
 BackendClient ..> Api : HTTP + JSON (HTTP Basic)
 BackendClient ..> BackendException : lanza
 BackendClient ..> Credenciales
+BackendClient ..> ErrorBackendDTO : lee el error
 Sesion ..> Credenciales
 Sesion ..> UsuarioActualDTO
 ErroresAdvice ..> BackendException : maneja
@@ -345,6 +351,8 @@ ErroresAdvice ..> BackendException : maneja
 HandlerInterceptor <|.. SesionInterceptor
 WebMvcConfigurer <|.. WebConfig
 WebConfig --> SesionInterceptor
+HandlerInterceptor <|.. SinCacheInterceptor
+WebConfig --> SinCacheInterceptor
 SesionInterceptor ..> Sesion
 
 ' DTO usados por los controladores (principales)
@@ -355,9 +363,11 @@ ProductoController ..> ProductoDTO
 IngredienteController ..> IngredienteDTO
 EmpleadoController ..> EmpleadoDTO
 AuthController ..> UsuarioActualDTO
-PedidoDetalleDTO +-- PedidoDetalleDTO_ItemDetalle
-PedidoDetalleDTO +-- PedidoDetalleDTO_ModificacionDetalle
-PedidoRequestDTO +-- PedidoRequestDTO_ItemRequest
-PedidoRequestDTO +-- PedidoRequestDTO_ModificacionRequest
+PedidoDetalleDTO "1" *-- "0..*" ItemDetalleDTO : items
+ItemDetalleDTO "1" *-- "0..*" ModificacionDetalleDTO : modificaciones
+PedidoRequestDTO "1" *-- "0..*" ItemRequestDTO : items
+ItemRequestDTO "1" *-- "0..*" ModificacionRequestDTO : modificaciones
+ItemRequestDTO --> "0..*" ProductoIngredienteDTO : receta
+ReporteVentasDTO --> "0..*" PedidoDTO : pedidos
 
 @enduml
