@@ -8,6 +8,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ProductoIngredienteRepository
         extends JpaRepository<ProductoIngrediente, ProductoIngredienteId> {
 
+    /**
+     * Busca un ingrediente en la receta de un producto.
+     * Devuelve null si no forma parte de la receta.
+     * (Se usa en lugar de findById, que devuelve Optional.)
+     */
+    ProductoIngrediente findByProducto_IDAndIngrediente_ID(
+            String idProducto,
+            String idIngrediente);
+
     /** Receta completa de un producto. */
     List<ProductoIngrediente> findByProducto_ID(String idProducto);
 

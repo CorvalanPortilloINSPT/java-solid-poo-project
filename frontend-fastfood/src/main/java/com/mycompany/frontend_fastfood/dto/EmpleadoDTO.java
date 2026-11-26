@@ -10,7 +10,7 @@ import lombok.Setter;
  * Empleado tal como lo devuelve el backend
  * (GET /api/empleados y GET /api/empleados/{id}).
  *
- * Mismos campos que EmpleadoDTO del backend. Nunca trae la contraseña.
+ * Mismos campos que la entidad Empleado del backend. Nunca trae la contraseña.
  */
 @Getter
 @Setter

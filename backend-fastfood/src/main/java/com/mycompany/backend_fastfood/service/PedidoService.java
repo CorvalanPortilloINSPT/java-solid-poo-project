@@ -1,6 +1,5 @@
 package com.mycompany.backend_fastfood.service;
 
-import com.mycompany.backend_fastfood.dto.PedidoRequestDTO;
 import com.mycompany.backend_fastfood.exception.DatoInvalidoException;
 import com.mycompany.backend_fastfood.exception.OperacionNoPermitidaException;
 import com.mycompany.backend_fastfood.exception.RecursoNoEncontradoException;
@@ -13,7 +12,7 @@ import com.mycompany.backend_fastfood.model.ItemIngrediente;
 import com.mycompany.backend_fastfood.model.Pedido;
 import com.mycompany.backend_fastfood.model.Producto;
 import com.mycompany.backend_fastfood.model.ProductoIngrediente;
-import com.mycompany.backend_fastfood.model.ProductoIngredienteId;
+import com.mycompany.backend_fastfood.model.ReporteVentas;
 import com.mycompany.backend_fastfood.model.Rol;
 import com.mycompany.backend_fastfood.model.TipoModificacion;
 import com.mycompany.backend_fastfood.repository.EmpleadoRepository;
@@ -24,7 +23,6 @@ import com.mycompany.backend_fastfood.repository.ProductoIngredienteRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,9 +47,14 @@ import org.springframework.transaction.annotation.Transactional;
  * - El precio de los ingredientes agregados se congela en la venta.
  * - IDs de ítems IT001... y de modificaciones II0001...
  *
- * Despacho: solo un COCINERO; solo PENDIENTE -> DESPACHADO.
+ * Despacho: solo un COCINERO; solo PENDIENTE → DESPACHADO.
  * Eliminación: solo pedidos PENDIENTE.
  * Reporte: pedidos DESPACHADO, con filtros opcionales de fecha y vendedor.
+ *
+ * El pedido nuevo llega como entidad Pedido (sin DTO), con sus ítems y
+ * modificaciones tal como vienen en el JSON. Ese objeto solo se usa para
+ * LEER los datos: el pedido que se guarda se arma acá, con los productos
+ * e ingredientes reales y los precios congelados.
  */
 @Slf4j
 @Service
@@ -100,9 +103,14 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public Pedido buscar(String id) {
-        return pedidoRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException("pedido", id));
+
+        Pedido pedido = pedidoRepository.findByID(id);
+
+        if (pedido == null) {
+            throw new RecursoNoEncontradoException("pedido", id);
+        }
+
+        return pedido;
     }
 
     // ------------------------------------------------------------------
@@ -110,13 +118,13 @@ public class PedidoService {
     // ------------------------------------------------------------------
 
     @Transactional
-    public Pedido registrar(String usuarioVendedor, PedidoRequestDTO datos) {
+    public Pedido registrar(String usuarioVendedor, Pedido datos) {
 
         Empleado vendedor = obtenerEmpleadoConRol(
                 usuarioVendedor, Rol.VENDEDOR,
                 "Solo un vendedor puede registrar pedidos");
 
-        if (datos.getItems() == null || datos.getItems().isEmpty()) {
+        if (datos.getItems().isEmpty()) {
             throw new DatoInvalidoException(
                     "El pedido debe tener al menos un producto");
         }
@@ -134,18 +142,14 @@ public class PedidoService {
 
         int numeroItem = 0;
 
-        for (PedidoRequestDTO.ItemRequest datosItem : datos.getItems()) {
+        for (Item datosItem : datos.getItems()) {
 
             numeroItem++;
 
             Item item = crearItem(numeroItem, datosItem, pedido, idsItems);
 
-            List<PedidoRequestDTO.ModificacionRequest> modificaciones =
-                    datosItem.getModificaciones() != null
-                            ? datosItem.getModificaciones()
-                            : List.of();
-
-            for (PedidoRequestDTO.ModificacionRequest datosMod : modificaciones) {
+            // Si el ítem no trae modificaciones, la lista está vacía.
+            for (ItemIngrediente datosMod : datosItem.getModificaciones()) {
                 agregarModificacion(numeroItem, datosMod, item, idsModificaciones);
             }
 
@@ -164,7 +168,7 @@ public class PedidoService {
 
     private Item crearItem(
             int numeroItem,
-            PedidoRequestDTO.ItemRequest datos,
+            Item datos,
             Pedido pedido,
             List<String> idsItems) {
 
@@ -189,7 +193,8 @@ public class PedidoService {
                     + " no está disponible");
         }
 
-        if (datos.getCantidad() == null || datos.getCantidad() <= 0) {
+        // Si no se envía, la cantidad llega en 0.
+        if (datos.getCantidad() <= 0) {
             throw new DatoInvalidoException(
                     prefijo + "la cantidad debe ser mayor a cero");
         }
@@ -202,7 +207,7 @@ public class PedidoService {
 
     private void agregarModificacion(
             int numeroItem,
-            PedidoRequestDTO.ModificacionRequest datos,
+            ItemIngrediente datos,
             Item item,
             List<String> idsModificaciones) {
 
@@ -222,9 +227,10 @@ public class PedidoService {
                     + " está dado de baja");
         }
 
-        TipoModificacion tipo = parsearTipo(prefijo, datos.getTipo());
+        TipoModificacion tipo = tipoObligatorio(prefijo, datos.getTipoModificacion());
 
-        if (datos.getCantidad() == null || datos.getCantidad() <= 0) {
+        // Si no se envía, la cantidad llega en 0.
+        if (datos.getCantidad() <= 0) {
             throw new DatoInvalidoException(
                     prefijo + "la cantidad de " + ingrediente.getDescripcion()
                     + " debe ser mayor a cero");
@@ -255,17 +261,20 @@ public class PedidoService {
             Ingrediente ingrediente,
             int cantidad) {
 
-        Optional<ProductoIngrediente> relacion =
-                productoIngredienteRepository.findById(new ProductoIngredienteId(
-                        item.getProducto().getID(), ingrediente.getID()));
+        // null si el ingrediente no forma parte de la receta del producto.
+        ProductoIngrediente relacion = productoIngredienteRepository
+                .findByProducto_IDAndIngrediente_ID(
+                        item.getProducto().getID(), ingrediente.getID());
 
-        if (relacion.isPresent() && relacion.get().isObligatorio()) {
+        boolean enReceta = relacion != null;
+
+        if (enReceta && relacion.isObligatorio()) {
             throw new ReglaNegocioException(
                     prefijo + "no se puede quitar " + ingrediente.getDescripcion()
                     + " porque es obligatorio");
         }
 
-        int disponible = cantidadActual(item, ingrediente, relacion.isPresent());
+        int disponible = cantidadActual(item, ingrediente, enReceta);
 
         if (cantidad > disponible) {
             throw new ReglaNegocioException(
@@ -346,8 +355,12 @@ public class PedidoService {
     // Reporte de ventas
     // ------------------------------------------------------------------
 
+    /**
+     * Arma el reporte completo: los pedidos y los totales los calcula
+     * el backend, así se ven igual desde el front y desde Postman.
+     */
     @Transactional(readOnly = true)
-    public List<Pedido> pedidosParaReporte(
+    public ReporteVentas generarReporte(
             LocalDate desde,
             LocalDate hasta,
             String idVendedor) {
@@ -365,8 +378,10 @@ public class PedidoService {
             throw new RecursoNoEncontradoException("empleado", vendedor);
         }
 
-        return pedidoRepository.buscarParaReporte(
+        List<Pedido> pedidos = pedidoRepository.buscarParaReporte(
                 EstadoPedido.DESPACHADO, desde, hasta, vendedor);
+
+        return new ReporteVentas(desde, hasta, vendedor, pedidos);
     }
 
     // ------------------------------------------------------------------
@@ -378,9 +393,12 @@ public class PedidoService {
             Rol rolRequerido,
             String mensaje) {
 
-        Empleado empleado = empleadoRepository.findByUsuario(usuario)
-                .orElseThrow(() -> new OperacionNoPermitidaException(
-                        "Usuario autenticado no encontrado"));
+        Empleado empleado = empleadoRepository.findByUsuario(usuario);
+
+        if (empleado == null) {
+            throw new OperacionNoPermitidaException(
+                    "Usuario autenticado no encontrado");
+        }
 
         if (empleado.getRol() != rolRequerido) {
             throw new OperacionNoPermitidaException(mensaje);
@@ -389,21 +407,20 @@ public class PedidoService {
         return empleado;
     }
 
-    private TipoModificacion parsearTipo(String prefijo, String tipoTexto) {
+    /**
+     * El tipo llega en el JSON como texto ("AGREGADO" o "QUITADO") y
+     * Jackson lo convierte al enum. Si el texto no es válido, Jackson
+     * rechaza el JSON (400, ver GlobalExceptionHandler); acá solo se
+     * controla que se haya enviado.
+     */
+    private TipoModificacion tipoObligatorio(String prefijo, TipoModificacion tipo) {
 
-        if (tipoTexto == null || tipoTexto.isBlank()) {
+        if (tipo == null) {
             throw new DatoInvalidoException(
                     prefijo + "el tipo de modificación es obligatorio "
                     + "(AGREGADO o QUITADO)");
         }
 
-        try {
-            return TipoModificacion.valueOf(tipoTexto.trim().toUpperCase());
-
-        } catch (IllegalArgumentException e) {
-            throw new DatoInvalidoException(
-                    prefijo + "tipo de modificación inválido: " + tipoTexto
-                    + ". Valores permitidos: AGREGADO, QUITADO");
-        }
+        return tipo;
     }
 }

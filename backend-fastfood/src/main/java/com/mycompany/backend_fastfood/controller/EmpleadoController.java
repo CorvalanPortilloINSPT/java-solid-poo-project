@@ -1,8 +1,6 @@
 package com.mycompany.backend_fastfood.controller;
 
-import com.mycompany.backend_fastfood.dto.CambioRolDTO;
-import com.mycompany.backend_fastfood.dto.EmpleadoDTO;
-import com.mycompany.backend_fastfood.dto.EmpleadoRequestDTO;
+import com.mycompany.backend_fastfood.model.Empleado;
 import com.mycompany.backend_fastfood.service.EmpleadoService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -19,6 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Endpoints de empleados. Toda la lógica está en EmpleadoService.
+ *
+ * Recibe y devuelve la entidad Empleado directamente (sin DTO). La
+ * contraseña se recibe pero nunca se devuelve (ver Persona).
  *
  * Cada operación recibe el usuario autenticado, porque lo que se puede
  * hacer depende de quién lo pide:
@@ -37,51 +38,60 @@ public class EmpleadoController {
 
     /** Solo los empleados que el usuario autenticado puede gestionar. */
     @GetMapping
-    public List<EmpleadoDTO> listarEmpleados(Authentication auth) {
-        return empleadoService.listar(auth.getName())
-                .stream()
-                .map(EmpleadoDTO::desde)
-                .toList();
+    public List<Empleado> listarEmpleados(Authentication auth) {
+        return empleadoService.listar(auth.getName());
     }
 
     @GetMapping("/{id}")
-    public EmpleadoDTO buscarEmpleado(
+    public Empleado buscarEmpleado(
             @PathVariable String id,
             Authentication auth) {
 
-        return EmpleadoDTO.desde(
-                empleadoService.buscar(auth.getName(), id));
+        return empleadoService.buscar(auth.getName(), id);
     }
 
+    /**
+     * Alta. Body:
+     * { "dni": "30111222", "nombre": "Ana", "apellido": "Gomez",
+     *   "usuario": "agomez", "password": "secreta123", "rol": "VENDEDOR" }
+     *
+     * El objeto que llega solo trae los datos: el service valida y crea
+     * el empleado (ID automático, contraseña con BCrypt, activo).
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EmpleadoDTO registrarEmpleado(
-            @RequestBody EmpleadoRequestDTO dto,
+    public Empleado registrarEmpleado(
+            @RequestBody Empleado datos,
             Authentication auth) {
 
-        return EmpleadoDTO.desde(
-                empleadoService.registrar(auth.getName(), dto));
+        return empleadoService.registrar(auth.getName(), datos);
     }
 
+    /**
+     * Modificación de datos personales. Body: nombre, apellido y usuario
+     * obligatorios; "password" opcional (si no se envía, se mantiene).
+     * El DNI y el rol no se modifican por esta vía.
+     */
     @PutMapping("/{id}")
-    public EmpleadoDTO modificarEmpleado(
+    public Empleado modificarEmpleado(
             @PathVariable String id,
-            @RequestBody EmpleadoRequestDTO dto,
+            @RequestBody Empleado datos,
             Authentication auth) {
 
-        return EmpleadoDTO.desde(
-                empleadoService.modificar(auth.getName(), id, dto));
+        return empleadoService.modificar(auth.getName(), id, datos);
     }
 
-    /** Rol del día: solo GERENTE, solo entre VENDEDOR y COCINERO. */
+    /**
+     * Rol del día: solo GERENTE, solo entre VENDEDOR y COCINERO.
+     * Body: { "rol": "COCINERO" }. Del objeto que llega se usa solo el rol.
+     */
     @PutMapping("/{id}/rol")
-    public EmpleadoDTO cambiarRol(
+    public Empleado cambiarRol(
             @PathVariable String id,
-            @RequestBody CambioRolDTO dto,
+            @RequestBody Empleado datos,
             Authentication auth) {
 
-        return EmpleadoDTO.desde(
-                empleadoService.cambiarRol(auth.getName(), id, dto.getRol()));
+        return empleadoService.cambiarRol(auth.getName(), id, datos.getRol());
     }
 
     /** Baja lógica. */

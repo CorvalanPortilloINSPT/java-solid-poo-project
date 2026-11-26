@@ -70,7 +70,7 @@
         <c:choose>
             <c:when test="${empty reporte.idVendedor}">todos</c:when>
             <c:otherwise>
-                <c:out value="${nombresEmpleados[reporte.idVendedor]} (${reporte.idVendedor})"/>
+                <c:out value="${nombreVendedorFiltro} (${reporte.idVendedor})"/>
             </c:otherwise>
         </c:choose>
     </p>
@@ -102,12 +102,12 @@
                             </td>
                             <td data-label="Fecha"><c:out value="${pedido.fecha}"/></td>
                             <td data-label="Vendedor">
-                                <c:out value="${nombresEmpleados[pedido.empleadoVendedor]}"/>
-                                (<c:out value="${pedido.empleadoVendedor}"/>)
+                                <c:out value="${pedido.nombreVendedor}"/>
+                                (<c:out value="${pedido.idVendedor}"/>)
                             </td>
                             <td data-label="Cocinero">
-                                <c:out value="${nombresEmpleados[pedido.empleadoCocinero]}"/>
-                                (<c:out value="${pedido.empleadoCocinero}"/>)
+                                <c:out value="${pedido.nombreCocinero}"/>
+                                (<c:out value="${pedido.idCocinero}"/>)
                             </td>
                             <td data-label="Total">$<fmt:formatNumber value="${pedido.total}" pattern="#,##0.00"/></td>
                         </tr>

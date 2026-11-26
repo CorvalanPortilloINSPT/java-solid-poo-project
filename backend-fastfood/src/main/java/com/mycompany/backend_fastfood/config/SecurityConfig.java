@@ -1,6 +1,5 @@
 package com.mycompany.backend_fastfood.config;
 
-import com.mycompany.backend_fastfood.security.TextoPlanoLegacyEncoder;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,6 +42,13 @@ public class SecurityConfig {
     private static final String COCINERO = "COCINERO";
     private static final String SYS_ADMIN = "SYS_ADMIN";
 
+    /**
+     * Las expresiones con flecha (csrf -> ..., auth -> ...) son la forma
+     * de configuración que exige Spring Security: cada método recibe un
+     * "Customizer" que configura esa parte. Es el único lugar del backend
+     * con programación funcional, porque el framework no ofrece otra
+     * forma de escribir esta configuración.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
@@ -53,8 +59,8 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
 
-                // Públicos
-                .requestMatchers("/api/prueba", "/error").permitAll()
+                // Público: la página de error de Spring
+                .requestMatchers("/error").permitAll()
 
                 // Datos y contraseña del usuario logueado (cualquier rol)
                 .requestMatchers("/api/auth/**").authenticated()
@@ -107,23 +113,20 @@ public class SecurityConfig {
     }
 
     /**
-     * Contraseñas nuevas: se guardan con BCrypt ("{bcrypt}$2a$...").
-     * Contraseñas viejas en texto plano (sin prefijo): se siguen aceptando,
-     * así los empleados cargados desde la consola pueden iniciar sesión
-     * y la base sigue siendo compatible con el sistema anterior.
+     * Todas las contraseñas se guardan y se comparan con BCrypt.
+     *
+     * Se guardan con el prefijo del algoritmo: "{bcrypt}$2a$10$...".
+     * DelegatingPasswordEncoder lee ese prefijo para saber con qué
+     * algoritmo comparar; el único registrado es BCrypt, así que no se
+     * acepta ninguna contraseña guardada en texto plano.
+     * (El constructor de Spring recibe los algoritmos en un Map.)
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
 
-        Map<String, PasswordEncoder> encoders = Map.of(
+        Map<String, PasswordEncoder> algoritmos = Map.of(
                 "bcrypt", new BCryptPasswordEncoder());
 
-        DelegatingPasswordEncoder encoder =
-                new DelegatingPasswordEncoder("bcrypt", encoders);
-
-        encoder.setDefaultPasswordEncoderForMatches(
-                new TextoPlanoLegacyEncoder());
-
-        return encoder;
+        return new DelegatingPasswordEncoder("bcrypt", algoritmos);
     }
 }

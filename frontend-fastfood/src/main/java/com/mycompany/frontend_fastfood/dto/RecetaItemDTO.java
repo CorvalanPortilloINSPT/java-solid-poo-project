@@ -10,7 +10,7 @@ import lombok.Setter;
  * Body que el front envía al backend para agregar un ingrediente
  * a la receta de un producto (POST /api/productos/{id}/ingredientes).
  *
- * Mismos campos que RecetaItemDTO del backend:
+ * Los campos que el backend toma de la entidad ProductoIngrediente:
  * { "idIngrediente": "ING03", "obligatorio": false }
  *
  * Para LEER la receta se usa ProductoIngredienteDTO

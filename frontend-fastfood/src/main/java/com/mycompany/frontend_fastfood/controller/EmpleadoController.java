@@ -201,7 +201,7 @@ public class EmpleadoController {
     // Rol del día (solo gerente)
     // ------------------------------------------------------------------
 
-    /** Cambia el rol del día: VENDEDOR <-> COCINERO. */
+    /** Cambia el rol del día: VENDEDOR o COCINERO. */
     @PostMapping("/empleados/{id}/rol")
     public String cambiarRol(
             @PathVariable String id,

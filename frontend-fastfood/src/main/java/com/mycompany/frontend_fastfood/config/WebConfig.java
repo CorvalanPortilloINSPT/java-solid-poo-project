@@ -41,7 +41,6 @@ public class WebConfig implements WebMvcConfigurer {
                         "/",          // decide solo si va al login o al menú
                         "/login",     // formulario y envío del login
                         "/logout",    // si la sesión ya venció, igual vuelve al login
-                        "/prueba",    // página de prueba de conexión
                         "/error",     // página de error de Spring
                         "/css/**",    // estilos (si los agregamos)
                         "/img/**");   // imágenes (si las agregamos)

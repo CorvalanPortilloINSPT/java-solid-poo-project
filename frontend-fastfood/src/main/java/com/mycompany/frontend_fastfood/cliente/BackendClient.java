@@ -1,11 +1,10 @@
 package com.mycompany.frontend_fastfood.cliente;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.mycompany.frontend_fastfood.dto.ErrorBackendDTO;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -29,10 +28,9 @@ import org.springframework.web.client.RestTemplate;
  * Si hubiera que cambiar la forma de leer o escribir el JSON, solo se
  * modifica esta clase.
  */
+@Slf4j
 @Component
 public class BackendClient {
-
-    private static final Logger log = LoggerFactory.getLogger(BackendClient.class);
 
     private final RestTemplate restTemplate;
     private final String backendUrl;
@@ -55,12 +53,26 @@ public class BackendClient {
     }
 
     /**
-     * GET que devuelve una lista. Se pide como arreglo y se convierte en lista.
+     * GET que devuelve una lista. Se pide como arreglo y se pasa a una lista.
      * Ejemplo: getLista("/api/productos", ProductoDTO[].class, cred)
+     *
+     * Se pide como arreglo porque RestTemplate no puede saber el tipo de los
+     * elementos de una List<T> (los genéricos se borran al compilar); el
+     * arreglo, en cambio, sí conserva el tipo de sus elementos.
      */
     public <T> List<T> getLista(String ruta, Class<T[]> tipoArreglo, Credenciales credenciales) {
         T[] arreglo = llamar(HttpMethod.GET, ruta, null, tipoArreglo, credenciales);
-        return arreglo == null ? List.of() : Arrays.asList(arreglo);
+
+        List<T> lista = new ArrayList<>();
+
+        // Si el backend no devolvió nada, queda la lista vacía.
+        if (arreglo != null) {
+            for (T elemento : arreglo) {
+                lista.add(elemento);
+            }
+        }
+
+        return lista;
     }
 
     /** POST con body; devuelve lo que responde el backend. */
@@ -118,17 +130,17 @@ public class BackendClient {
             int status = e.getStatusCode().value();
             String mensaje = mensajeDeError(e, status);
 
-            log.warn("{} {} -> {}: {}", metodo, ruta, status, mensaje);
+            log.warn("{} {} respondió {}: {}", metodo, ruta, status, mensaje);
             throw new BackendException(status, mensaje);
 
         } catch (ResourceAccessException e) {
-            log.error("{} {} -> sin conexión con el backend: {}",
+            log.error("{} {}: sin conexión con el backend: {}",
                     metodo, ruta, e.getMessage());
             throw new BackendException(BackendException.SIN_CONEXION,
                     "No se pudo conectar con el backend. Verifique que esté iniciado.");
 
         } catch (RestClientException e) {
-            log.error("{} {} -> respuesta inesperada: {}", metodo, ruta, e.getMessage());
+            log.error("{} {}: respuesta inesperada: {}", metodo, ruta, e.getMessage());
             throw new BackendException(500,
                     "El backend devolvió una respuesta inesperada.");
         }
@@ -142,25 +154,24 @@ public class BackendClient {
     private String mensajeDeError(HttpStatusCodeException e, int status) {
 
         try {
-            ErrorBackend error = e.getResponseBodyAs(ErrorBackend.class);
+            ErrorBackendDTO error = e.getResponseBodyAs(ErrorBackendDTO.class);
 
-            if (error != null && error.detail() != null && !error.detail().isBlank()) {
-                return error.detail();
+            if (error != null && error.getDetail() != null && !error.getDetail().isBlank()) {
+                return error.getDetail();
             }
         } catch (RuntimeException ignorada) {
             // El body no era un ProblemDetail: se usa el mensaje por defecto.
         }
 
-        return switch (status) {
-            case 401 -> "Usuario o contraseña incorrectos, o el empleado está dado de baja.";
-            case 403 -> "No tiene permiso para realizar esta operación.";
-            case 404 -> "No se encontró lo solicitado.";
-            default -> "El backend respondió con un error (" + status + ").";
-        };
-    }
-
-    /** Forma de los errores del backend (ProblemDetail). */
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    record ErrorBackend(String title, int status, String detail) {
+        switch (status) {
+            case 401:
+                return "Usuario o contraseña incorrectos, o el empleado está dado de baja.";
+            case 403:
+                return "No tiene permiso para realizar esta operación.";
+            case 404:
+                return "No se encontró lo solicitado.";
+            default:
+                return "El backend respondió con un error (" + status + ").";
+        }
     }
 }

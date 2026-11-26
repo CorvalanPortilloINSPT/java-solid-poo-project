@@ -10,7 +10,7 @@ import lombok.Setter;
  * Ingrediente tal como lo devuelve el backend
  * (GET /api/ingredientes y GET /api/ingredientes/{id}).
  *
- * Mismos campos que IngredienteDTO del backend.
+ * Mismos campos que la entidad Ingrediente del backend.
  */
 @Getter
 @Setter

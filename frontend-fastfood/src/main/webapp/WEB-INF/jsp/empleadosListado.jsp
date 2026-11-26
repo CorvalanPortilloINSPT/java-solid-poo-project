@@ -57,7 +57,7 @@
                                 </c:when>
                                 <c:otherwise>
 
-                                    <%-- Rol del día: solo gerente, vendedor <-> cocinero --%>
+                                    <%-- Rol del día: solo gerente, vendedor o cocinero --%>
                                     <c:if test="${puedeAsignarRolDelDia and empleado.rol == 'VENDEDOR'}">
                                         <form method="post" action="${ctx}/empleados/${empleado.id}/rol">
                                             <input type="hidden" name="rol" value="COCINERO">

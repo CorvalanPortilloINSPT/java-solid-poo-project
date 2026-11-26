@@ -10,7 +10,7 @@ import lombok.Setter;
  * Body que el front envía al backend para dar de alta o modificar
  * un producto (POST /api/productos y PUT /api/productos/{id}).
  *
- * Mismos campos que ProductoRequestDTO del backend:
+ * Los campos que el backend toma de la entidad Producto:
  * { "descripcion": "Hamburguesa doble", "precio": 2500 }
  *
  * No lleva ID (lo genera el backend) ni "disponible"

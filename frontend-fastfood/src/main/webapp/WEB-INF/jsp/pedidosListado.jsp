@@ -45,8 +45,13 @@
                         <td data-label="Pedido"><c:out value="${pedido.id}"/></td>
                         <td data-label="Fecha"><c:out value="${pedido.fecha}"/></td>
                         <td data-label="Estado"><c:out value="${pedido.estado}"/></td>
-                        <td data-label="Vendedor"><c:out value="${pedido.empleadoVendedor}"/></td>
-                        <td data-label="Cocinero"><c:out value="${empty pedido.empleadoCocinero ? 'Sin despachar' : pedido.empleadoCocinero}"/></td>
+                        <td data-label="Vendedor"><c:out value="${pedido.nombreVendedor} (${pedido.idVendedor})"/></td>
+                        <td data-label="Cocinero">
+                            <c:choose>
+                                <c:when test="${empty pedido.idCocinero}">Sin despachar</c:when>
+                                <c:otherwise><c:out value="${pedido.nombreCocinero} (${pedido.idCocinero})"/></c:otherwise>
+                            </c:choose>
+                        </td>
                         <td data-label="Total">$<fmt:formatNumber value="${pedido.total}" pattern="#,##0.00"/></td>
                         <td class="acciones">
                             <%-- Eliminar primero: así "Ver detalle" queda siempre contra el borde --%>

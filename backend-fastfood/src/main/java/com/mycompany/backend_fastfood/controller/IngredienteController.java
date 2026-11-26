@@ -1,7 +1,6 @@
 package com.mycompany.backend_fastfood.controller;
 
-import com.mycompany.backend_fastfood.dto.IngredienteDTO;
-import com.mycompany.backend_fastfood.dto.IngredienteRequestDTO;
+import com.mycompany.backend_fastfood.model.Ingrediente;
 import com.mycompany.backend_fastfood.service.IngredienteService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -18,8 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Endpoints de ingredientes. Toda la lógica está en IngredienteService.
  *
- * El ID lo genera el sistema: el body de alta y modificación
- * (IngredienteRequestDTO) solo tiene descripción y precio.
+ * Recibe y devuelve la entidad Ingrediente directamente (sin DTO).
+ * El ID lo genera el sistema: del body de alta y modificación solo se
+ * usan la descripción y el precio.
+ * Body: { "descripcion": "Panceta", "precio": 500 }
  */
 @RestController
 @RequestMapping("/api/ingredientes")
@@ -33,40 +34,36 @@ public class IngredienteController {
 
     /** Lista solo los ingredientes activos. */
     @GetMapping
-    public List<IngredienteDTO> listarIngredientes() {
-        return ingredienteService.listarActivos()
-                .stream()
-                .map(IngredienteDTO::desde)
-                .toList();
+    public List<Ingrediente> listarIngredientes() {
+        return ingredienteService.listarActivos();
     }
 
     /** Busca por ID, aunque esté dado de baja (para el historial). */
     @GetMapping("/{id}")
-    public IngredienteDTO buscarIngrediente(@PathVariable String id) {
-        return IngredienteDTO.desde(ingredienteService.buscar(id));
+    public Ingrediente buscarIngrediente(@PathVariable String id) {
+        return ingredienteService.buscar(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public IngredienteDTO crearIngrediente(
-            @RequestBody IngredienteRequestDTO dto) {
+    public Ingrediente crearIngrediente(@RequestBody Ingrediente datos) {
 
-        return IngredienteDTO.desde(ingredienteService.registrar(
-                dto.getDescripcion(),
-                dto.getPrecio()
-        ));
+        return ingredienteService.registrar(
+                datos.getDescripcion(),
+                datos.getPrecio()
+        );
     }
 
     @PutMapping("/{id}")
-    public IngredienteDTO modificarIngrediente(
+    public Ingrediente modificarIngrediente(
             @PathVariable String id,
-            @RequestBody IngredienteRequestDTO dto) {
+            @RequestBody Ingrediente datos) {
 
-        return IngredienteDTO.desde(ingredienteService.modificar(
+        return ingredienteService.modificar(
                 id,
-                dto.getDescripcion(),
-                dto.getPrecio()
-        ));
+                datos.getDescripcion(),
+                datos.getPrecio()
+        );
     }
 
     /** Baja lógica. */

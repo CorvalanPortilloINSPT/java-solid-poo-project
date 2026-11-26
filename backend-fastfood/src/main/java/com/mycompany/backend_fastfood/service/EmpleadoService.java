@@ -1,6 +1,5 @@
 package com.mycompany.backend_fastfood.service;
 
-import com.mycompany.backend_fastfood.dto.EmpleadoRequestDTO;
 import com.mycompany.backend_fastfood.exception.DatoInvalidoException;
 import com.mycompany.backend_fastfood.exception.OperacionNoPermitidaException;
 import com.mycompany.backend_fastfood.exception.RecursoNoEncontradoException;
@@ -21,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * Quién gestiona a quién:
  * - GERENTE: gestiona VENDEDOR y COCINERO, y asigna el rol del día
- *   (vendedor <-> cocinero).
+ *   (vendedor o cocinero).
  * - SYS_ADMIN: gestiona GERENTE y SYS_ADMIN.
  *
  * Reglas (sistema anterior):
@@ -102,18 +101,19 @@ public class EmpleadoService {
     // ------------------------------------------------------------------
 
     @Transactional
-    public Empleado registrar(String usuarioActor, EmpleadoRequestDTO datos) {
+    public Empleado registrar(String usuarioActor, Empleado datos) {
 
         Empleado actor = obtenerActor(usuarioActor);
 
-        Rol rol = parsearRol(datos.getRol());
+        Rol rol = rolObligatorio(datos.getRol());
         verificarGestionable(actor, rol);
 
-        String dni = obligatorio(datos.getDni(), "El DNI");
+        String dni = obligatorio(datos.getDNI(), "El DNI");
         String nombre = obligatorio(datos.getNombre(), "El nombre");
         String apellido = obligatorio(datos.getApellido(), "El apellido");
         String usuario = obligatorio(datos.getUsuario(), "El usuario");
-        String password = obligatorio(datos.getPassword(), "La contraseña");
+        // La contraseña llega en el JSON como "password" (ver Persona).
+        String password = obligatorio(datos.getContraseña(), "La contraseña");
 
         sinCaracteresProhibidos(nombre, "El nombre");
         sinCaracteresProhibidos(apellido, "El apellido");
@@ -158,7 +158,7 @@ public class EmpleadoService {
     public Empleado modificar(
             String usuarioActor,
             String id,
-            EmpleadoRequestDTO datos) {
+            Empleado datos) {
 
         Empleado actor = obtenerActor(usuarioActor);
         Empleado empleado = buscarPorId(id);
@@ -167,15 +167,15 @@ public class EmpleadoService {
         verificarActivo(empleado);
 
         // El DNI no se modifica: se acepta solo si no viene o es el mismo.
-        if (datos.getDni() != null
-                && !datos.getDni().trim().equals(empleado.getDNI())) {
+        if (datos.getDNI() != null
+                && !datos.getDNI().trim().equals(empleado.getDNI())) {
 
             throw new DatoInvalidoException("El DNI no se puede modificar");
         }
 
         // El rol no se modifica por esta vía.
         if (datos.getRol() != null
-                && parsearRol(datos.getRol()) != empleado.getRol()) {
+                && datos.getRol() != empleado.getRol()) {
 
             throw new DatoInvalidoException(
                     "El rol no se modifica aquí. Use PUT /api/empleados/"
@@ -200,9 +200,11 @@ public class EmpleadoService {
         empleado.setUsuario(usuario);
 
         // La contraseña es opcional: si no viene, se mantiene la actual.
-        if (datos.getPassword() != null && !datos.getPassword().isBlank()) {
-            sinCaracteresProhibidos(datos.getPassword(), "La contraseña");
-            empleado.setContraseña(passwordEncoder.encode(datos.getPassword()));
+        String passwordNueva = datos.getContraseña();
+
+        if (passwordNueva != null && !passwordNueva.isBlank()) {
+            sinCaracteresProhibidos(passwordNueva, "La contraseña");
+            empleado.setContraseña(passwordEncoder.encode(passwordNueva));
             log.info("Contraseña del empleado {} cambiada por {}",
                     id, actor.getUsuario());
         }
@@ -217,7 +219,7 @@ public class EmpleadoService {
     // ------------------------------------------------------------------
 
     @Transactional
-    public Empleado cambiarRol(String usuarioActor, String id, String rolTexto) {
+    public Empleado cambiarRol(String usuarioActor, String id, Rol rolPedido) {
 
         Empleado actor = obtenerActor(usuarioActor);
 
@@ -234,7 +236,7 @@ public class EmpleadoService {
                     "Solo se puede cambiar el rol de vendedores y cocineros");
         }
 
-        Rol nuevoRol = parsearRol(rolTexto);
+        Rol nuevoRol = rolObligatorio(rolPedido);
 
         if (!ROLES_DEL_DIA.contains(nuevoRol)) {
             throw new DatoInvalidoException(
@@ -406,28 +408,44 @@ public class EmpleadoService {
 
     private void verificarGestionable(Empleado actor, Rol rolObjetivo) {
 
-        if (!rolesGestionables(actor.getRol()).contains(rolObjetivo)) {
-
-            String mensaje = actor.getRol() == Rol.GERENTE
-                    ? "Un gerente solo puede gestionar vendedores y cocineros"
-                    : actor.getRol() == Rol.SYS_ADMIN
-                        ? "Un SYS_ADMIN solo puede gestionar gerentes y SYS_ADMIN"
-                        : "Su rol no permite gestionar empleados";
-
-            throw new OperacionNoPermitidaException(mensaje);
+        if (rolesGestionables(actor.getRol()).contains(rolObjetivo)) {
+            return;
         }
+
+        String mensaje;
+
+        if (actor.getRol() == Rol.GERENTE) {
+            mensaje = "Un gerente solo puede gestionar vendedores y cocineros";
+        } else if (actor.getRol() == Rol.SYS_ADMIN) {
+            mensaje = "Un SYS_ADMIN solo puede gestionar gerentes y SYS_ADMIN";
+        } else {
+            mensaje = "Su rol no permite gestionar empleados";
+        }
+
+        throw new OperacionNoPermitidaException(mensaje);
     }
 
     private Empleado obtenerActor(String usuarioActor) {
-        return empleadoRepository.findByUsuario(usuarioActor)
-                .orElseThrow(() -> new OperacionNoPermitidaException(
-                        "Usuario autenticado no encontrado"));
+
+        Empleado actor = empleadoRepository.findByUsuario(usuarioActor);
+
+        if (actor == null) {
+            throw new OperacionNoPermitidaException(
+                    "Usuario autenticado no encontrado");
+        }
+
+        return actor;
     }
 
     private Empleado buscarPorId(String id) {
-        return empleadoRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException("empleado", id));
+
+        Empleado empleado = empleadoRepository.findByID(id);
+
+        if (empleado == null) {
+            throw new RecursoNoEncontradoException("empleado", id);
+        }
+
+        return empleado;
     }
 
     private void verificarActivo(Empleado empleado) {
@@ -437,18 +455,19 @@ public class EmpleadoService {
         }
     }
 
-    private Rol parsearRol(String rolTexto) {
+    /**
+     * El rol llega en el JSON como texto ("VENDEDOR") y Jackson lo
+     * convierte al enum Rol. Si el texto no es un rol válido, Jackson
+     * rechaza el JSON (400, ver GlobalExceptionHandler); acá solo se
+     * controla que se haya enviado.
+     */
+    private Rol rolObligatorio(Rol rol) {
 
-        if (rolTexto == null || rolTexto.isBlank()) {
+        if (rol == null) {
             throw new DatoInvalidoException("El rol es obligatorio");
         }
 
-        try {
-            return Rol.valueOf(rolTexto.trim().toUpperCase());
-
-        } catch (IllegalArgumentException e) {
-            throw new DatoInvalidoException("Rol inválido: " + rolTexto);
-        }
+        return rol;
     }
 
     private String obligatorio(String valor, String campo) {
@@ -477,10 +496,7 @@ public class EmpleadoService {
 
     private String generarNuevoId() {
 
-        List<String> ids = empleadoRepository.findAll()
-                .stream()
-                .map(Empleado::getID)
-                .toList();
+        List<String> ids = empleadoRepository.findAllIds();
 
         String id = GeneradorId.siguiente(ids, PREFIJO_ID, DIGITOS_ID);
 

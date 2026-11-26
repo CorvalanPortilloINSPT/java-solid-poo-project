@@ -62,9 +62,13 @@ public class IngredienteService {
     /** Busca por ID, aunque esté dado de baja (para el historial). */
     @Transactional(readOnly = true)
     public Ingrediente buscar(String id) {
-        return ingredienteRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException("ingrediente", id));
+        Ingrediente ingrediente = ingredienteRepository.findByID(id);
+
+        if (ingrediente == null) {
+            throw new RecursoNoEncontradoException("ingrediente", id);
+        }
+
+        return ingrediente;
     }
 
     // ------------------------------------------------------------------
@@ -170,10 +174,7 @@ public class IngredienteService {
 
     private String generarNuevoId() {
 
-        List<String> ids = ingredienteRepository.findAll()
-                .stream()
-                .map(Ingrediente::getID)
-                .toList();
+        List<String> ids = ingredienteRepository.findAllIds();
 
         String id = GeneradorId.siguiente(ids, PREFIJO_ID, DIGITOS_ID);
 

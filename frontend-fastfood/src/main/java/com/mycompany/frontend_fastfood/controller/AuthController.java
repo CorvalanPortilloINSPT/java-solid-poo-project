@@ -8,8 +8,7 @@ import com.mycompany.frontend_fastfood.dto.CambioPasswordDTO;
 import com.mycompany.frontend_fastfood.dto.UsuarioActualDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,10 +38,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  * acá antes de llamar al backend (el formulario también los bloquea con
  * el atributo pattern, pero eso se puede saltear enviando el POST a mano).
  */
+@Slf4j
 @Controller
 public class AuthController {
-
-    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private static final String CARACTERES_PROHIBIDOS = "<>{}";
     private static final String MENSAJE_CARACTERES =

@@ -198,14 +198,15 @@ public class IngredienteController {
     }
 
     /**
-     * Texto del formulario -> Double para el backend.
-     * Vacío -> null: el backend responde "El precio es obligatorio".
-     * Acepta coma o punto decimal.
+     * Texto del formulario a Double para el backend. Acepta coma o punto
+     * decimal. El precio es obligatorio: se controla acá porque, sin DTO,
+     * el backend recibe la entidad Ingrediente, cuyo precio es un double
+     * y no puede quedar vacío.
      */
     private Double convertirPrecio(String texto) {
 
         if (texto == null || texto.isBlank()) {
-            return null;
+            throw new BackendException(400, "El precio es obligatorio.");
         }
 
         try {
@@ -216,7 +217,7 @@ public class IngredienteController {
         }
     }
 
-    /** 500.0 -> "500"; 350.5 -> "350.5" (para el campo del formulario). */
+    /** 500.0 se muestra como "500" y 350.5 como "350.5" en el formulario. */
     private String precioComoTexto(double precio) {
         return BigDecimal.valueOf(precio).stripTrailingZeros().toPlainString();
     }

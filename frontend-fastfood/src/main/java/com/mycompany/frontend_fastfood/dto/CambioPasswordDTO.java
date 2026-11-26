@@ -9,7 +9,7 @@ import lombok.Setter;
 /**
  * Body del cambio de la propia contraseña (PUT /api/auth/password).
  *
- * Mismos campos que CambioPasswordDTO del backend:
+ * Mismos campos que espera el backend en PUT /api/auth/password:
  * { "passwordActual": "...", "passwordNueva": "..." }
  *
  * No se guarda en la sesión ni se escribe en los logs.

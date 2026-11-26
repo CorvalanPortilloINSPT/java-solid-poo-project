@@ -1,9 +1,9 @@
 package com.mycompany.backend_fastfood.controller;
 
-import com.mycompany.backend_fastfood.dto.CambioPasswordDTO;
-import com.mycompany.backend_fastfood.dto.UsuarioActualDTO;
+import com.mycompany.backend_fastfood.model.Empleado;
 import com.mycompany.backend_fastfood.repository.EmpleadoRepository;
 import com.mycompany.backend_fastfood.service.EmpleadoService;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,34 +33,45 @@ public class AuthController {
     }
 
     /**
-     * Devuelve los datos del empleado autenticado.
-     * Sirve para verificar usuario y contraseña desde el front.
+     * Devuelve los datos del empleado autenticado (sin la contraseña:
+     * ver Persona). Sirve para verificar usuario y contraseña desde el front.
      */
     @GetMapping("/me")
-    public UsuarioActualDTO usuarioActual(Authentication authentication) {
+    public Empleado usuarioActual(Authentication authentication) {
 
-        return empleadoRepository.findByUsuario(authentication.getName())
-                .map(UsuarioActualDTO::desde)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Usuario no encontrado"
-                ));
+        Empleado empleado =
+                empleadoRepository.findByUsuario(authentication.getName());
+
+        if (empleado == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Usuario no encontrado");
+        }
+
+        return empleado;
     }
 
     /**
      * Cambia la contraseña del usuario autenticado.
      * Requiere la contraseña actual.
+     *
+     * Body:
+     * { "passwordActual": "admin123", "passwordNueva": "otraClave456" }
+     *
+     * Ninguna entidad representa "cambiar la contraseña" (son dos
+     * contraseñas, la actual y la nueva), así que el body se recibe
+     * como un Map de texto a texto, sin crear una clase solo para esto.
      */
     @PutMapping("/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cambiarPassword(
-            @RequestBody CambioPasswordDTO dto,
+            @RequestBody Map<String, String> datos,
             Authentication authentication) {
 
         empleadoService.cambiarPasswordPropia(
                 authentication.getName(),
-                dto.getPasswordActual(),
-                dto.getPasswordNueva()
+                datos.get("passwordActual"),
+                datos.get("passwordNueva")
         );
     }
 }

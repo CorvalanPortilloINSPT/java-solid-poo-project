@@ -1,6 +1,6 @@
 package com.mycompany.backend_fastfood.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorType;
@@ -12,6 +12,15 @@ import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
 
+/**
+ * Datos comunes de las personas del sistema.
+ *
+ * La API devuelve la entidad directamente (sin DTO). Las anotaciones de
+ * Jackson definen cómo se ve en el JSON:
+ * - "id" y "dni" en minúscula (el front los espera así).
+ * - La contraseña se RECIBE en el alta y en la modificación (con el
+ *   nombre "password"), pero NUNCA se devuelve en una respuesta.
+ */
 @Entity
 @Table(name = "persona")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
@@ -22,21 +31,31 @@ import jakarta.persistence.Table;
 public abstract class Persona {
 
     @Id
+    @JsonProperty("id")
     private String ID;
 
+    /** No tiene setter: @JsonProperty permite recibirlo en el JSON del alta. */
+    @JsonProperty("dni")
     private String DNI;
+
     private String nombre;
     private String apellido;
     private String usuario;
 
+    /**
+     * Guarda el hash BCrypt, nunca la contraseña.
+     * WRITE_ONLY: Jackson la lee del JSON que llega, pero no la escribe
+     * en el JSON que sale.
+     */
     @Column(name = "contraseña")
+    @JsonProperty(value = "password", access = JsonProperty.Access.WRITE_ONLY)
     private String contraseña;
 
     @Enumerated(EnumType.STRING)
     private Rol rol;
 
     protected Persona() {
-        // Constructor requerido por JPA
+        // Constructor requerido por JPA (y por Jackson al leer un JSON)
     }
 
     protected Persona(
@@ -77,7 +96,7 @@ public abstract class Persona {
         return usuario;
     }
 
-    @JsonIgnore
+    /** No sale en el JSON: lo impide el WRITE_ONLY del atributo. */
     public String getContraseña() {
         return contraseña;
     }
