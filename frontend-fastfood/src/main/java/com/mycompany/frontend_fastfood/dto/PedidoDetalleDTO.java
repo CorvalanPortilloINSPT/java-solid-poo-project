@@ -10,7 +10,8 @@ import lombok.Setter;
 
 /**
  * Detalle completo de un pedido, tal como lo devuelve el backend
- * (PedidoDetalleDTO): pedido -> ítems -> modificaciones.
+ * (la entidad Pedido): pedido → ítems (ItemDetalleDTO) →
+ * modificaciones (ModificacionDetalleDTO).
  *
  * Jackson arma los tres niveles automáticamente a partir del JSON.
  */
@@ -27,37 +28,6 @@ public class PedidoDetalleDTO {
     private String nombreVendedor;
     private String idCocinero;
     private String nombreCocinero;
-    private List<ItemDetalle> items = new ArrayList<>();
+    private List<ItemDetalleDTO> items = new ArrayList<>();
     private double total;
-
-    /** Un producto del pedido. */
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ItemDetalle {
-
-        private String id;
-        private String idProducto;
-        private String descripcionProducto;
-        private int cantidad;
-        private double precioVenta;
-        private List<ModificacionDetalle> modificaciones = new ArrayList<>();
-        private double subtotal;
-    }
-
-    /** Un ingrediente agregado o quitado. */
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class ModificacionDetalle {
-
-        private String idIngrediente;
-        private String descripcionIngrediente;
-        private String tipo;
-        private int cantidadPorUnidad;
-        private int cantidadTotal;
-        private double precioUnitario;
-    }
 }

@@ -1,9 +1,5 @@
 package com.mycompany.backend_fastfood.controller;
 
-import com.mycompany.backend_fastfood.dto.ProductoDTO;
-import com.mycompany.backend_fastfood.dto.ProductoIngredienteDTO;
-import com.mycompany.backend_fastfood.dto.ProductoRequestDTO;
-import com.mycompany.backend_fastfood.dto.RecetaItemDTO;
 import com.mycompany.backend_fastfood.model.Producto;
 import com.mycompany.backend_fastfood.model.ProductoIngrediente;
 import com.mycompany.backend_fastfood.service.ProductoService;
@@ -23,8 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
  * Endpoints de productos y sus recetas.
  * Toda la lógica está en ProductoService.
  *
- * El ID y la disponibilidad los calcula el sistema: el body de alta y
- * modificación (ProductoRequestDTO) solo tiene descripción y precio.
+ * Recibe y devuelve las entidades directamente (sin DTO).
+ * El ID y la disponibilidad los calcula el sistema: del body de alta y
+ * modificación solo se usan la descripción y el precio.
+ * Body: { "descripcion": "Papas fritas", "precio": 900 }
  */
 @RestController
 @RequestMapping("/api/productos")
@@ -42,46 +40,41 @@ public class ProductoController {
 
     /** Gerente: todos los productos activos. */
     @GetMapping
-    public List<ProductoDTO> listarProductos() {
-        return productoService.listarActivos()
-                .stream()
-                .map(ProductoController::aDTO)
-                .toList();
+    public List<Producto> listarProductos() {
+        return productoService.listarActivos();
     }
 
     /** Vendedor: solo los productos que se pueden vender. */
     @GetMapping("/disponibles")
-    public List<ProductoDTO> listarDisponibles() {
-        return productoService.listarDisponibles()
-                .stream()
-                .map(ProductoController::aDTO)
-                .toList();
+    public List<Producto> listarDisponibles() {
+        return productoService.listarDisponibles();
     }
 
     @GetMapping("/{id}")
-    public ProductoDTO buscarProducto(@PathVariable String id) {
-        return aDTO(productoService.buscar(id));
+    public Producto buscarProducto(@PathVariable String id) {
+        return productoService.buscar(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ProductoDTO crearProducto(@RequestBody ProductoRequestDTO dto) {
-        return aDTO(productoService.registrar(
-                dto.getDescripcion(),
-                dto.getPrecio()
-        ));
+    public Producto crearProducto(@RequestBody Producto datos) {
+
+        return productoService.registrar(
+                datos.getDescripcion(),
+                datos.getPrecio()
+        );
     }
 
     @PutMapping("/{id}")
-    public ProductoDTO modificarProducto(
+    public Producto modificarProducto(
             @PathVariable String id,
-            @RequestBody ProductoRequestDTO dto) {
+            @RequestBody Producto datos) {
 
-        return aDTO(productoService.modificar(
+        return productoService.modificar(
                 id,
-                dto.getDescripcion(),
-                dto.getPrecio()
-        ));
+                datos.getDescripcion(),
+                datos.getPrecio()
+        );
     }
 
     /** Baja lógica. */
@@ -96,24 +89,26 @@ public class ProductoController {
     // ------------------------------------------------------------------
 
     @GetMapping("/{id}/ingredientes")
-    public List<ProductoIngredienteDTO> verReceta(@PathVariable String id) {
-        return productoService.verReceta(id)
-                .stream()
-                .map(ProductoController::aDTO)
-                .toList();
+    public List<ProductoIngrediente> verReceta(@PathVariable String id) {
+        return productoService.verReceta(id);
     }
 
+    /**
+     * Agrega un ingrediente a la receta.
+     * Body: { "idIngrediente": "ING02", "obligatorio": false }
+     * Si no se envía "obligatorio", se toma como false (opcional).
+     */
     @PostMapping("/{id}/ingredientes")
     @ResponseStatus(HttpStatus.CREATED)
-    public ProductoIngredienteDTO agregarIngrediente(
+    public ProductoIngrediente agregarIngrediente(
             @PathVariable String id,
-            @RequestBody RecetaItemDTO dto) {
+            @RequestBody ProductoIngrediente datos) {
 
-        return aDTO(productoService.agregarIngrediente(
+        return productoService.agregarIngrediente(
                 id,
-                dto.getIdIngrediente(),
-                dto.isObligatorio()
-        ));
+                datos.getIdIngrediente(),
+                datos.isObligatorio()
+        );
     }
 
     @DeleteMapping("/{id}/ingredientes/{idIngrediente}")
@@ -123,28 +118,5 @@ public class ProductoController {
             @PathVariable String idIngrediente) {
 
         productoService.quitarIngrediente(id, idIngrediente);
-    }
-
-    // ------------------------------------------------------------------
-    // Conversión a DTO
-    // ------------------------------------------------------------------
-
-    private static ProductoDTO aDTO(Producto producto) {
-        return new ProductoDTO(
-                producto.getID(),
-                producto.getDescripcion(),
-                producto.getPrecio(),
-                producto.isDisponible()
-        );
-    }
-
-    private static ProductoIngredienteDTO aDTO(ProductoIngrediente relacion) {
-        return new ProductoIngredienteDTO(
-                relacion.getIDProducto(),
-                relacion.getProducto().getDescripcion(),
-                relacion.getIDIngrediente(),
-                relacion.getIngrediente().getDescripcion(),
-                relacion.isObligatorio()
-        );
     }
 }

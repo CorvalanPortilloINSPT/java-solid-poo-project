@@ -9,7 +9,7 @@ import lombok.Setter;
 /**
  * Body del rol del día (PUT /api/empleados/{id}/rol).
  *
- * Mismo campo que CambioRolDTO del backend:
+ * Mismo formato que espera el backend (toma el rol de la entidad Empleado):
  * { "rol": "COCINERO" }
  */
 @Getter

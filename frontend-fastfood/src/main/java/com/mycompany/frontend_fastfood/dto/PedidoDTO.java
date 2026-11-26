@@ -7,8 +7,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Resumen de un pedido, tal como lo devuelve GET /api/pedidos
- * (PedidoDTO del backend). Para ítems y modificaciones, ver
+ * Resumen de un pedido para el listado y el reporte de ventas
+ * (GET /api/pedidos y GET /api/pedidos/reporte).
+ *
+ * El backend devuelve la entidad Pedido completa; acá se toman solo los
+ * datos que muestran esas pantallas (ignoreUnknown descarta el resto,
+ * por ejemplo los ítems). El nombre del vendedor y del cocinero ya
+ * viene calculado por el backend. Para ítems y modificaciones, ver
  * PedidoDetalleDTO.
  */
 @Getter
@@ -20,8 +25,10 @@ public class PedidoDTO {
     private String id;
     private LocalDate fecha;
     private String estado;
-    private String empleadoVendedor;
-    private String empleadoCocinero;
+    private String idVendedor;
+    private String nombreVendedor;
+    private String idCocinero;
+    private String nombreCocinero;
     private double total;
 
     /** Para el JSP: ${pedido.pendiente}. */

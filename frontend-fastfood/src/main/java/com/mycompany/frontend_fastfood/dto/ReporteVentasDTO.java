@@ -12,7 +12,7 @@ import lombok.Setter;
  * Reporte de ventas tal como lo devuelve el backend
  * (GET /api/pedidos/reporte).
  *
- * Mismos campos que ReporteVentasDTO del backend:
+ * Mismos campos que ReporteVentas del backend:
  * {
  *   "desde": "2026-10-01",
  *   "hasta": "2026-10-31",

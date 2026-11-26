@@ -32,7 +32,7 @@ Navegador  ──HTTP──▶  frontend-fastfood  ──REST + JSON──▶  b
                       (puerto 8081)        (HTTP Basic)      (puerto 8080)              (base fastfood)
 ```
 
-- **backend-fastfood**: API REST. Concentra las reglas de negocio, la seguridad y el acceso a la base de datos.
+- **backend-fastfood**: API REST. Concentra las reglas de negocio, la seguridad y el acceso a la base de datos. Devuelve las entidades directamente en JSON (sin DTO): las anotaciones de Jackson en cada entidad definen qué datos salen, y los datos calculados (subtotales, totales, reporte de ventas) los calcula el backend.
 - **frontend-fastfood**: aplicación web que muestra las pantallas de cada rol y consume la API. No usa JavaScript.
 
 ## Tecnologías
@@ -51,7 +51,6 @@ Navegador  ──HTTP──▶  frontend-fastfood  ──REST + JSON──▶  b
 | [`frontend-fastfood/`](frontend-fastfood) | Código fuente de la aplicación web |
 | [`database/`](database) | `fastfood.sql`: crea la base con datos de ejemplo |
 | [`docs/`](docs) | Informe final y diagramas UML ([`docs/uml/`](docs/uml)) |
-| [`ejecutables/`](ejecutables) | Scripts `.bat` para iniciar el sistema |
 | [`primera-entrega/`](primera-entrega) | Archivos de la primera entrega |
 
 Los ejecutables (`.jar` y `.war`) se descargan desde **[Releases](../../releases)**.
@@ -80,16 +79,17 @@ El script **borra y vuelve a crear** la base `fastfood` con las 7 tablas y los d
 **Opción A: con los ejecutables (no requiere Maven)**
 
 1. Descargá `backend-fastfood-0.0.1-SNAPSHOT.jar` y `frontend-fastfood-0.0.1-SNAPSHOT.war` desde [Releases](../../releases).
-2. Copialos en la carpeta `ejecutables/`, junto a los `.bat`.
-3. Ejecutá `1-iniciar-backend.bat` y esperá a que la consola muestre `Started BackendFastfoodApplication`.
-4. Ejecutá `2-iniciar-frontend.bat`.
+2. En una consola abierta en la carpeta donde los descargaste, iniciá primero el backend y esperá a que muestre `Started BackendFastfoodApplication`:
 
-También se pueden iniciar a mano:
+   ```
+   java -jar backend-fastfood-0.0.1-SNAPSHOT.jar
+   ```
 
-```
-java -jar backend-fastfood-0.0.1-SNAPSHOT.jar
-java -jar frontend-fastfood-0.0.1-SNAPSHOT.war
-```
+3. En otra consola, iniciá el frontend:
+
+   ```
+   java -jar frontend-fastfood-0.0.1-SNAPSHOT.war
+   ```
 
 **Opción B: desde el código fuente**
 
@@ -135,7 +135,7 @@ Desde otra PC o un celular de la misma red, se entra con `http://IP_DEL_FRONTEND
 | `bsosa` | `cocinero123` | COCINERO | Bruno Sosa |
 | `jlopez` | `vendedor123` | VENDEDOR | Julián López (dado de baja: no puede ingresar) |
 
-> ⚠️ Son usuarios y contraseñas **ficticios, solo para probar el sistema en forma local** con la base de ejemplo. En la base se guardan cifradas con BCrypt, nunca en texto plano. En un uso real hay que cambiar todas las contraseñas desde «Cambiar contraseña» y no publicar credenciales.
+> ⚠️ Son usuarios y contraseñas **ficticios, solo para probar el sistema en forma local** con la base de ejemplo. En la base se guarda solo su hash BCrypt, nunca la contraseña en texto plano. En un uso real hay que cambiar todas las contraseñas desde «Cambiar contraseña» y no publicar credenciales.
 
 Al iniciar, si no hay ningún SYS_ADMIN o GERENTE activo, el backend crea `sysadmin` / `sysadmin123` o `admin` / `admin123`, para que el sistema siempre tenga quien dé de alta empleados.
 
@@ -145,6 +145,6 @@ La base de ejemplo también incluye 22 ingredientes, 13 productos con sus receta
 
 ## Documentación
 
-- [Informe final](docs/Informe_TP_FastFood_Grupo_B.pdf)
+- 📄 [Informe final](docs/Informe_TP_FastFood_Grupo_B.pdf)
 - 📐 Diagramas de clases: [sistema completo](docs/uml/FastFood_UML.pdf) · [backend](docs/uml/FastFood_UML_backend.pdf) · [frontend](docs/uml/FastFood_UML_frontend.pdf) · [backend editable (.drawio)](docs/uml/FastFood_backend_UML.drawio)
 - 🧩 [Casos de uso](docs/uml/casos_de_uso.png) · [Entidad-relación](docs/uml/entidad_relacion.png) · [Arquitectura](docs/uml/arquitectura.png)

@@ -10,7 +10,7 @@ import lombok.Setter;
  * Producto tal como lo devuelve el backend
  * (GET /api/productos, /api/productos/disponibles y /api/productos/{id}).
  *
- * Mismos campos que ProductoDTO del backend.
+ * Datos de la entidad Producto del backend que usa el front.
  */
 @Getter
 @Setter

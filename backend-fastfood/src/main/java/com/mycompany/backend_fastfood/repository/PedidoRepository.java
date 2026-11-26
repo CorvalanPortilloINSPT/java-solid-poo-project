@@ -10,6 +10,12 @@ import org.springframework.data.repository.query.Param;
 
 public interface PedidoRepository extends JpaRepository<Pedido, String> {
 
+    /**
+     * Busca por ID. Devuelve null si no existe.
+     * (Se usa en lugar de findById, que devuelve Optional.)
+     */
+    Pedido findByID(String id);
+
     /** Pedidos pendientes para el cocinero, del más viejo al más nuevo. */
     List<Pedido> findByEstadoOrderByFechaAscIDAsc(EstadoPedido estado);
 
@@ -23,15 +29,17 @@ public interface PedidoRepository extends JpaRepository<Pedido, String> {
     /**
      * Reporte de ventas: pedidos en el estado indicado (DESPACHADO),
      * con filtros opcionales. Si un filtro llega en null, no se aplica.
+     *
+     * La consulta se escribe en JPQL (sobre las clases, no sobre las
+     * tablas). Cada parte termina con un espacio para que, al
+     * concatenarse, las palabras no queden pegadas.
      */
-    @Query("""
-            SELECT p FROM Pedido p
-            WHERE p.estado = :estado
-              AND (:desde IS NULL OR p.fecha >= :desde)
-              AND (:hasta IS NULL OR p.fecha <= :hasta)
-              AND (:idVendedor IS NULL OR p.empleadoVendedor.ID = :idVendedor)
-            ORDER BY p.fecha ASC, p.ID ASC
-            """)
+    @Query("SELECT p FROM Pedido p "
+            + "WHERE p.estado = :estado "
+            + "AND (:desde IS NULL OR p.fecha >= :desde) "
+            + "AND (:hasta IS NULL OR p.fecha <= :hasta) "
+            + "AND (:idVendedor IS NULL OR p.empleadoVendedor.ID = :idVendedor) "
+            + "ORDER BY p.fecha ASC, p.ID ASC")
     List<Pedido> buscarParaReporte(
             @Param("estado") EstadoPedido estado,
             @Param("desde") LocalDate desde,

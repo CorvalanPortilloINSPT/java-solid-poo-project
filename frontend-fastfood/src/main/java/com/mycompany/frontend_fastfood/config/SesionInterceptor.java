@@ -10,7 +10,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * Se ejecuta antes de cada controlador. Si no hay sesión iniciada,
  * redirige al login y el controlador no llega a ejecutarse.
  *
- * Las páginas que no necesitan sesión (login, prueba, error) se
+ * Las páginas que no necesitan sesión (login, error) se
  * excluyen en WebConfig.
  */
 @Component

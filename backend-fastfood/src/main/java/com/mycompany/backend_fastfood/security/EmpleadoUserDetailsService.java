@@ -34,12 +34,12 @@ public class EmpleadoUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String usuario)
             throws UsernameNotFoundException {
 
-        Empleado empleado = empleadoRepository.findByUsuario(usuario)
-                .orElseThrow(() -> {
-                    log.warn("Intento de login con usuario inexistente: {}", usuario);
-                    return new UsernameNotFoundException(
-                            "Usuario o contraseña incorrectos");
-                });
+        Empleado empleado = empleadoRepository.findByUsuario(usuario);
+
+        if (empleado == null) {
+            log.warn("Intento de login con usuario inexistente: {}", usuario);
+            throw new UsernameNotFoundException("Usuario o contraseña incorrectos");
+        }
 
         if (!empleado.isActivo()) {
             log.warn("Intento de login de un empleado dado de baja: {}", usuario);

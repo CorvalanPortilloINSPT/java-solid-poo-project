@@ -11,9 +11,8 @@ import com.mycompany.frontend_fastfood.dto.ProductoRequestDTO;
 import com.mycompany.frontend_fastfood.dto.RecetaItemDTO;
 import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -214,13 +213,19 @@ public class ProductoController {
         // En el desplegable solo se ofrecen los que todavía no están
         // en la receta (es solo presentación: el backend igual valida
         // que no se repitan).
-        Set<String> enReceta = receta.stream()
-                .map(ProductoIngredienteDTO::getIdIngrediente)
-                .collect(Collectors.toSet());
+        List<String> enReceta = new ArrayList<>();
 
-        List<IngredienteDTO> paraAgregar = activos.stream()
-                .filter(i -> !enReceta.contains(i.getId()))
-                .toList();
+        for (ProductoIngredienteDTO relacion : receta) {
+            enReceta.add(relacion.getIdIngrediente());
+        }
+
+        List<IngredienteDTO> paraAgregar = new ArrayList<>();
+
+        for (IngredienteDTO ingrediente : activos) {
+            if (!enReceta.contains(ingrediente.getId())) {
+                paraAgregar.add(ingrediente);
+            }
+        }
 
         model.addAttribute("producto", producto);
         model.addAttribute("receta", receta);
@@ -298,11 +303,16 @@ public class ProductoController {
         model.addAttribute("precio", precio);
     }
 
-    /** Texto del formulario -> Double. Vacío -> null. Acepta coma o punto. */
+    /**
+     * Texto del formulario a Double. Acepta coma o punto decimal.
+     * El precio es obligatorio: se controla acá porque, sin DTO, el backend
+     * recibe la entidad Producto, cuyo precio es un double y no puede
+     * quedar vacío.
+     */
     private Double convertirPrecio(String texto) {
 
         if (texto == null || texto.isBlank()) {
-            return null;
+            throw new BackendException(400, "El precio es obligatorio.");
         }
 
         try {
@@ -313,7 +323,7 @@ public class ProductoController {
         }
     }
 
-    /** 1500.0 -> "1500" (para el campo del formulario). */
+    /** 1500.0 se muestra como "1500" en el campo del formulario. */
     private String precioComoTexto(double precio) {
         return BigDecimal.valueOf(precio).stripTrailingZeros().toPlainString();
     }

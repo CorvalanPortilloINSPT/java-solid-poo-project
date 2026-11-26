@@ -80,16 +80,20 @@ public class ProductoService {
     /** Busca por ID, aunque esté dado de baja (para el historial). */
     @Transactional(readOnly = true)
     public Producto buscar(String id) {
-        return productoRepository.findById(id)
-                .orElseThrow(() ->
-                        new RecursoNoEncontradoException("producto", id));
+        Producto producto = productoRepository.findByID(id);
+
+        if (producto == null) {
+            throw new RecursoNoEncontradoException("producto", id);
+        }
+
+        return producto;
     }
 
     // ------------------------------------------------------------------
     // Alta
     // ------------------------------------------------------------------
 
-        @Transactional
+    @Transactional
     public Producto registrar(String descripcion, Double precio) {
 
         String descripcionLimpia = validarDescripcion(descripcion);
@@ -115,7 +119,7 @@ public class ProductoService {
     // Modificación
     // ------------------------------------------------------------------
 
-        @Transactional
+    @Transactional
     public Producto modificar(String id, String descripcion, Double precio) {
 
         Producto producto = buscar(id);
@@ -229,10 +233,13 @@ public class ProductoService {
         verificarActivo(producto);
 
         ProductoIngrediente relacion = productoIngredienteRepository
-                .findById(new ProductoIngredienteId(idProducto, idIngrediente))
-                .orElseThrow(() -> new RecursoNoEncontradoException(
-                        "El ingrediente " + idIngrediente
-                        + " no forma parte de la receta de " + idProducto));
+                .findByProducto_IDAndIngrediente_ID(idProducto, idIngrediente);
+
+        if (relacion == null) {
+            throw new RecursoNoEncontradoException(
+                    "El ingrediente " + idIngrediente
+                    + " no forma parte de la receta de " + idProducto);
+        }
 
         if (relacion.isObligatorio()) {
             throw new ReglaNegocioException(
@@ -279,10 +286,7 @@ public class ProductoService {
 
     private String generarNuevoId() {
 
-        List<String> ids = productoRepository.findAll()
-                .stream()
-                .map(Producto::getID)
-                .toList();
+        List<String> ids = productoRepository.findAllIds();
 
         String id = GeneradorId.siguiente(ids, PREFIJO_ID, DIGITOS_ID);
 
@@ -303,7 +307,7 @@ public class ProductoService {
         return descripcion.trim();
     }
 
-        private double validarPrecio(Double precio) {
+    private double validarPrecio(Double precio) {
 
         if (precio == null) {
             throw new DatoInvalidoException("El precio es obligatorio");

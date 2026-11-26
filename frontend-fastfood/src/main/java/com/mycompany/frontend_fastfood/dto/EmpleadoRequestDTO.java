@@ -10,7 +10,8 @@ import lombok.Setter;
  * Body que el front envía al backend para dar de alta o modificar
  * un empleado (POST /api/empleados y PUT /api/empleados/{id}).
  *
- * Mismos campos que EmpleadoRequestDTO del backend.
+ * Mismos campos que el backend lee de la entidad Empleado
+ * (la contraseña viaja como "password").
  *
  * Alta: todos los campos.
  * Modificación: dni y rol van en null (el backend no los cambia por

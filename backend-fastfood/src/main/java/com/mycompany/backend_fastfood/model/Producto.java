@@ -1,22 +1,32 @@
-
 package com.mycompany.backend_fastfood.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * Producto del menú.
+ *
+ * JSON (lo que devuelve la API):
+ * { "id": "PR001", "descripcion": "Hamburguesa", "precio": 4500.0,
+ *   "disponible": true, "activo": true }
+ *
+ * Para el alta y la modificación se usan solo "descripcion" y "precio":
+ * el ID y "disponible" los calcula el sistema.
+ */
 @Entity
 @Table(name = "producto")
 public class Producto {
 
     @Id
+    @JsonProperty("id")
     private String ID;
 
     private String descripcion;
-
     private double precio;
-
     private boolean disponible;
 
     @Column(nullable = false)
@@ -25,6 +35,14 @@ public class Producto {
     protected Producto() {
     }
 
+    /**
+     * Producto nuevo, siempre activo.
+     *
+     * Jackson NO usa este constructor (Mode.DISABLED): al leer un JSON usa
+     * el constructor vacío y carga la descripción y el precio con los
+     * setters. El producto que se guarda lo arma ProductoService.
+     */
+    @JsonCreator(mode = JsonCreator.Mode.DISABLED)
     public Producto(
             String ID,
             String descripcion,

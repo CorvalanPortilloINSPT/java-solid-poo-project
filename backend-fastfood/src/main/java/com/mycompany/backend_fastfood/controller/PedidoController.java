@@ -1,9 +1,7 @@
 package com.mycompany.backend_fastfood.controller;
 
-import com.mycompany.backend_fastfood.dto.PedidoDTO;
-import com.mycompany.backend_fastfood.dto.PedidoDetalleDTO;
-import com.mycompany.backend_fastfood.dto.PedidoRequestDTO;
-import com.mycompany.backend_fastfood.dto.ReporteVentasDTO;
+import com.mycompany.backend_fastfood.model.Pedido;
+import com.mycompany.backend_fastfood.model.ReporteVentas;
 import com.mycompany.backend_fastfood.service.PedidoService;
 import java.time.LocalDate;
 import java.util.List;
@@ -24,6 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Endpoints de pedidos. Toda la lógica está en PedidoService.
  *
+ * Recibe y devuelve la entidad Pedido directamente (sin DTO): cada
+ * pedido sale con sus ítems, sus modificaciones, los subtotales y el
+ * total, que calcula el backend (ver Pedido, Item e ItemIngrediente).
+ *
  * - VENDEDOR: registra pedidos y consulta.
  * - COCINERO: consulta pendientes y despacha.
  * - GERENTE: consulta, elimina pendientes y obtiene el reporte de ventas.
@@ -42,22 +44,16 @@ public class PedidoController {
     // Consultas
     // ------------------------------------------------------------------
 
-    /** Listado resumido de todos los pedidos, con su total. */
+    /** Todos los pedidos, con su total. */
     @GetMapping
-    public List<PedidoDTO> listarPedidos() {
-        return pedidoService.listarTodos()
-                .stream()
-                .map(PedidoDTO::desde)
-                .toList();
+    public List<Pedido> listarPedidos() {
+        return pedidoService.listarTodos();
     }
 
     /** Pendientes con su detalle completo: lo que ve el cocinero. */
     @GetMapping("/pendientes")
-    public List<PedidoDetalleDTO> listarPendientes() {
-        return pedidoService.listarPendientes()
-                .stream()
-                .map(PedidoDetalleDTO::desde)
-                .toList();
+    public List<Pedido> listarPendientes() {
+        return pedidoService.listarPendientes();
     }
 
     /**
@@ -66,52 +62,57 @@ public class PedidoController {
      * /api/pedidos/reporte?desde=2026-10-01&hasta=2026-10-31&idVendedor=E0002
      */
     @GetMapping("/reporte")
-    public ReporteVentasDTO reporteVentas(
+    public ReporteVentas reporteVentas(
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-
             @RequestParam(required = false) String idVendedor) {
 
-        return ReporteVentasDTO.desde(
-                pedidoService.pedidosParaReporte(desde, hasta, idVendedor),
-                desde,
-                hasta,
-                idVendedor
-        );
+        return pedidoService.generarReporte(desde, hasta, idVendedor);
     }
 
     /** Detalle completo de un pedido. */
     @GetMapping("/{id}")
-    public PedidoDetalleDTO buscarPedido(@PathVariable String id) {
-        return PedidoDetalleDTO.desde(pedidoService.buscar(id));
+    public Pedido buscarPedido(@PathVariable String id) {
+        return pedidoService.buscar(id);
     }
 
     // ------------------------------------------------------------------
     // Operaciones
     // ------------------------------------------------------------------
 
-    /** El vendedor es el usuario autenticado. */
+    /**
+     * Registra un pedido. El vendedor es el usuario autenticado.
+     * Body:
+     * {
+     *   "items": [
+     *     { "idProducto": "PR001", "cantidad": 3 },
+     *     { "idProducto": "PR001", "cantidad": 1,
+     *       "modificaciones": [
+     *         { "idIngrediente": "ING02", "tipo": "AGREGADO", "cantidad": 1 },
+     *         { "idIngrediente": "ING04", "tipo": "QUITADO",  "cantidad": 1 }
+     *       ] }
+     *   ]
+     * }
+     * La cantidad de cada modificación es POR UNIDAD del ítem.
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PedidoDetalleDTO registrarPedido(
-            @RequestBody PedidoRequestDTO dto,
+    public Pedido registrarPedido(
+            @RequestBody Pedido datos,
             Authentication auth) {
 
-        return PedidoDetalleDTO.desde(
-                pedidoService.registrar(auth.getName(), dto));
+        return pedidoService.registrar(auth.getName(), datos);
     }
 
     /** El cocinero es el usuario autenticado. */
     @PutMapping("/{id}/despacho")
-    public PedidoDetalleDTO despacharPedido(
+    public Pedido despacharPedido(
             @PathVariable String id,
             Authentication auth) {
 
-        return PedidoDetalleDTO.desde(
-                pedidoService.despachar(auth.getName(), id));
+        return pedidoService.despachar(auth.getName(), id);
     }
 
     /** Solo pedidos pendientes. */

@@ -60,6 +60,7 @@ public class GlobalExceptionHandler {
         log.info("JSON inválido: {}", ex.getMessage());
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
-                "El cuerpo de la solicitud no es un JSON válido o tiene tipos incorrectos");
+                "El cuerpo de la solicitud no es un JSON válido o tiene valores incorrectos "
+                + "(por ejemplo, un rol o un tipo de modificación que no existe)");
     }
 }

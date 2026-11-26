@@ -6,6 +6,8 @@ import com.mycompany.frontend_fastfood.cliente.Credenciales;
 import com.mycompany.frontend_fastfood.cliente.Sesion;
 import com.mycompany.frontend_fastfood.dto.EmpleadoDTO;
 import com.mycompany.frontend_fastfood.dto.IngredienteDTO;
+import com.mycompany.frontend_fastfood.dto.ItemRequestDTO;
+import com.mycompany.frontend_fastfood.dto.ModificacionRequestDTO;
 import com.mycompany.frontend_fastfood.dto.PedidoDTO;
 import com.mycompany.frontend_fastfood.dto.PedidoDetalleDTO;
 import com.mycompany.frontend_fastfood.dto.PedidoRequestDTO;
@@ -14,9 +16,6 @@ import com.mycompany.frontend_fastfood.dto.ProductoIngredienteDTO;
 import com.mycompany.frontend_fastfood.dto.ReporteVentasDTO;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Pantallas de pedidos.
@@ -188,7 +186,7 @@ public class PedidoController {
                     "/api/productos/" + idProducto + "/ingredientes",
                     ProductoIngredienteDTO[].class, credenciales);
 
-            PedidoRequestDTO.ItemRequest item = new PedidoRequestDTO.ItemRequest();
+            ItemRequestDTO item = new ItemRequestDTO();
             item.setIdProducto(producto.getId());
             item.setCantidad(cantidad);
             item.setDescripcionProducto(producto.getDescripcion());
@@ -257,8 +255,7 @@ public class PedidoController {
                     IngredienteDTO.class,
                     Sesion.credenciales(sesion));
 
-            PedidoRequestDTO.ModificacionRequest modificacion =
-                    new PedidoRequestDTO.ModificacionRequest();
+            ModificacionRequestDTO modificacion = new ModificacionRequestDTO();
             modificacion.setIdIngrediente(ingrediente.getId());
             modificacion.setTipo(tipo);
             modificacion.setCantidad(cantidad);
@@ -289,7 +286,7 @@ public class PedidoController {
         PedidoRequestDTO pedido = pedidoEnArmado(sesion);
 
         if (numeroValido(numero, pedido.getItems().size(), "ítem", redirect)) {
-            PedidoRequestDTO.ItemRequest item = pedido.item(numero);
+            ItemRequestDTO item = pedido.item(numero);
 
             if (numeroValido(numeroMod, item.getModificaciones().size(), "modificación", redirect)) {
                 item.quitarModificacion(numeroMod);
@@ -361,23 +358,30 @@ public class PedidoController {
         verificarGerente(sesion);
         Credenciales credenciales = Sesion.credenciales(sesion);
 
-        // Empleados para el desplegable y para mostrar nombres en la tabla
-        // (el reporte trae solo los IDs de vendedor y cocinero).
+        // Empleados para el desplegable del filtro. Los nombres del vendedor
+        // y del cocinero de cada pedido ya vienen calculados por el backend.
         List<EmpleadoDTO> empleados = backendClient.getLista(
                 "/api/empleados", EmpleadoDTO[].class, credenciales);
 
-        Map<String, String> nombres = empleados.stream()
-                .collect(Collectors.toMap(
-                        EmpleadoDTO::getId,
-                        e -> e.getApellido() + ", " + e.getNombre()));
+        // Solo se mandan los filtros que se completaron. El primero va
+        // después de "?" y los siguientes después de "&", por ejemplo:
+        // /api/pedidos/reporte?desde=2026-11-01&idVendedor=E0003
+        // (las fechas llegan como 2026-11-01 y los IDs como E0003:
+        // no tienen espacios ni símbolos que haya que codificar).
+        String ruta = "/api/pedidos/reporte";
+        String separador = "?";
 
-        // Solo se mandan los filtros que se completaron.
-        String ruta = UriComponentsBuilder.fromPath("/api/pedidos/reporte")
-                .queryParamIfPresent("desde", textoOpcional(desde))
-                .queryParamIfPresent("hasta", textoOpcional(hasta))
-                .queryParamIfPresent("idVendedor", textoOpcional(idVendedor))
-                .build()
-                .toUriString();
+        if (tieneTexto(desde)) {
+            ruta = ruta + separador + "desde=" + desde.trim();
+            separador = "&";
+        }
+        if (tieneTexto(hasta)) {
+            ruta = ruta + separador + "hasta=" + hasta.trim();
+            separador = "&";
+        }
+        if (tieneTexto(idVendedor)) {
+            ruta = ruta + separador + "idVendedor=" + idVendedor.trim();
+        }
 
         try {
             ReporteVentasDTO reporte = backendClient.get(
@@ -397,7 +401,7 @@ public class PedidoController {
         model.addAttribute("hasta", hasta);
         model.addAttribute("idVendedor", idVendedor);
         model.addAttribute("empleados", empleados);
-        model.addAttribute("nombresEmpleados", nombres);
+        model.addAttribute("nombreVendedorFiltro", nombreDeEmpleado(empleados, idVendedor));
 
         return "pedidosReporte";
     }
@@ -445,10 +449,28 @@ public class PedidoController {
         return true;
     }
 
-    /** Texto vacío -> sin filtro. */
-    private Optional<String> textoOpcional(String texto) {
-        return (texto == null || texto.isBlank())
-                ? Optional.empty()
-                : Optional.of(texto.trim());
+    /** Un filtro vacío no se aplica. */
+    private boolean tieneTexto(String texto) {
+        return texto != null && !texto.isBlank();
+    }
+
+    /**
+     * "Apellido, Nombre" del empleado con ese ID, para mostrar el filtro
+     * de vendedor en el resumen del reporte. Si no se filtró o no se
+     * encuentra, devuelve un texto vacío.
+     */
+    private String nombreDeEmpleado(List<EmpleadoDTO> empleados, String id) {
+
+        if (!tieneTexto(id)) {
+            return "";
+        }
+
+        for (EmpleadoDTO empleado : empleados) {
+            if (empleado.getId().equals(id.trim())) {
+                return empleado.getApellido() + ", " + empleado.getNombre();
+            }
+        }
+
+        return "";
     }
 }

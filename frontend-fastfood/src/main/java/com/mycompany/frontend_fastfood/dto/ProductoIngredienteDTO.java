@@ -8,7 +8,7 @@ import lombok.Setter;
 
 /**
  * Una línea de la receta de un producto, tal como la devuelve
- * GET /api/productos/{id}/ingredientes (ProductoIngredienteDTO del backend).
+ * GET /api/productos/{id}/ingredientes (la entidad ProductoIngrediente del backend).
  *
  * Serializable: se guarda en la sesión dentro del pedido en armado,
  * para mostrar la receta de cada ítem sin volver a pedirla.
